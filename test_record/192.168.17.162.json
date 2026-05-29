@@ -1,0 +1,122 @@
+{
+  "robot_info": {
+    "sn": "17.162",
+    "tester": "彭施思",
+    "model": "TW",
+    "ip": "192.168.17.162"
+  },
+  "integrated": {
+    "data": {
+      "light_photo": "success",
+      "light_video": "success",
+      "thermal_photo": "success",
+      "thermal_video": "success",
+      "light_PTZ": "success",
+      "light_point": "success",
+      "thermal_point": "success",
+      "Manual_focusing": "success",
+      "Auto_focusing": "success",
+      "thermal_Temperature": "success"
+    },
+    "error": "",
+    "result": "success",
+    "time": "2026-05-13 17:04:33",
+    "current_task": "thermal_Temperature"
+  },
+  "light": {
+    "data": {
+      "red": null,
+      "blue": null,
+      "green": null,
+      "front_light": null,
+      "back_light": null
+    },
+    "result": "success",
+    "time": "2026-05-13 17:12:07"
+  },
+  "manual": {
+    "data": {
+      "超声波避障": {
+        "result": "failed",
+        "time": "2026-05-14 08:57:19"
+      },
+      "老化数据": {
+        "result": "failed",
+        "time": "2026-05-14 08:57:20"
+      },
+      "精度测试": {
+        "result": "failed",
+        "time": "2026-05-14 08:57:24"
+      },
+      "无线充电": {
+        "result": "failed",
+        "time": "2026-05-14 08:57:25"
+      },
+      "有线充电": {
+        "result": "failed",
+        "time": "2026-05-14 08:57:26"
+      },
+      "部署任务": {
+        "result": "failed",
+        "time": "2026-05-14 08:57:27"
+      },
+      "语音对讲模块": {
+        "result": "failed",
+        "time": "2026-05-14 08:57:28"
+      },
+      "VNC测试": {
+        "result": "failed",
+        "time": "2026-05-14 08:57:28"
+      },
+      "喇叭音量": {
+        "result": "failed",
+        "time": "2026-05-14 08:57:30"
+      },
+      "灯带": {
+        "result": "failed",
+        "time": "2026-05-14 08:57:30"
+      },
+      "散热风扇": {
+        "result": "failed",
+        "time": "2026-05-14 08:57:32"
+      },
+      "手柄遥控": {
+        "result": "success",
+        "time": "2026-05-14 08:57:34"
+      },
+      "RCC_base调试口": {
+        "result": "success",
+        "time": "2026-05-14 08:57:34"
+      },
+      "外网口": {
+        "result": "success",
+        "time": "2026-05-14 08:57:35"
+      },
+      "ECN变更检查": {
+        "result": "success",
+        "time": "2026-05-14 08:57:36"
+      },
+      "铭牌信息检查": {
+        "result": "success",
+        "time": "2026-05-14 08:57:37"
+      },
+      "外观检查": {
+        "result": "success",
+        "time": "2026-05-14 08:57:39"
+      }
+    },
+    "time": "2026-05-14 08:57:43",
+    "result": "failed"
+  },
+  "version": {
+    "pilot_version": "feature_v4.0.3_xjyw.260413.2-x86_64-running",
+    "rcc_base_version": "2.01",
+    "robot_version": "robot-v1.1.2",
+    "rws_version": "v2.0.2",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "youiscript_version": "release_v2.0.0.8-x86_64-running",
+    "mos_version": "2.8.5_20260411",
+    "result": "success",
+    "time": "2026-05-14 09:38:24"
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "robot_info": {
+    "sn": "18.160",
+    "tester": "彭施思",
+    "model": "TW",
+    "ip": "192.168.17.160"
+  },
+  "version": {
+    "pilot_version": "feature_v4.0.3_xjyw.260413.2-x86_64-running",
+    "rcc_base_version": "2.01",
+    "robot_version": "robot-v1.1.2",
+    "rws_version": "v2.0.2",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "youiscript_version": "release_v2.0.0.8-x86_64-running",
+    "mos_version": "2.8.5_20260411",
+    "result": "success",
+    "time": "2026-05-14 12:55:30"
+  },
+  "manual": {
+    "data": {
+      "老化数据": {
+        "result": "success",
+        "time": "2026-05-14 13:01:08"
+      },
+      "超声波避障": {
+        "result": "success",
+        "time": "2026-05-14 13:01:09"
+      },
+      "外观检查": {
+        "result": "success",
+        "time": "2026-05-16 16:07:17"
+      },
+      "铭牌信息检查": {
+        "result": "success",
+        "time": "2026-05-16 16:07:19"
+      },
+      "ECN变更检查": {
+        "result": "success",
+        "time": "2026-05-16 16:07:20"
+      },
+      "开关机": {
+        "result": "success",
+        "time": "2026-05-16 16:07:21"
+      },
+      "外网口": {
+        "result": "success",
+        "time": "2026-05-16 16:07:25"
+      },
+      "RCC_base调试口": {
+        "result": "success",
+        "time": "2026-05-16 16:07:27"
+      },
+      "手柄遥控": {
+        "result": "success",
+        "time": "2026-05-16 16:07:28"
+      },
+      "散热风扇": {
+        "result": "success",
+        "time": "2026-05-16 16:07:32"
+      },
+      "灯带": {
+        "result": "success",
+        "time": "2026-05-16 16:07:33"
+      },
+      "喇叭音量": {
+        "result": "success",
+        "time": "2026-05-16 16:23:32"
+      },
+      "VNC测试": {
+        "result": "success",
+        "time": "2026-05-16 16:23:38"
+      },
+      "语音对讲模块": {
+        "result": "success",
+        "time": "2026-05-16 16:23:38"
+      },
+      "部署任务": {
+        "result": "success",
+        "time": "2026-05-16 16:23:40"
+      },
+      "有线充电": {
+        "result": "success",
+        "time": "2026-05-16 16:23:41"
+      },
+      "无线充电": {
+        "result": "success",
+        "time": "2026-05-16 16:23:42"
+      },
+      "精度测试": {
+        "result": "success",
+        "time": "2026-05-16 16:23:48"
+      },
+      "斜坡驻车": {
+        "result": "success",
+        "time": "2026-05-16 16:23:50"
+      }
+    },
+    "time": "2026-05-16 16:24:06",
+    "result": "success"
+  },
+  "sensor": {
+    "result": "failed",
+    "data": {
+      "ks114_sensor": {
+        "前超声": "D0 06 83 59",
+        "后超声": "D2 0D 72 51"
+      },
+      "imu_data": {
+        "x": 0.00616555241868,
+        "y": 0.00476995715871,
+        "z": -0.0676701962948,
+        "w": 0.997677266598
+      },
+      "odom": {
+        "x": 1.15913380201e-05,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "cpu_hz": [
+        4076.802,
+        4091.638,
+        4071.796,
+        4073.068
+      ],
+      "temperature": "NaN",
+      "humidity": "NaN",
+      "o2": 20.989999771118164,
+      "co": 1.0,
+      "microphone": true,
+      "fan_board": "27 ℃"
+    },
+    "time": "2026-05-14 13:52:43"
+  },
+  "speaker": {
+    "result": "success",
+    "time": "2026-05-16 15:55:36"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "0.401 ms",
+      "192.168.2.63": "0.792 ms",
+      "192.168.2.250": "0.379 ms",
+      "192.168.0.100": "0.022 ms",
+      "192.168.2.2": "0.015 ms",
+      "192.168.2.100": "0.404 ms"
+    },
+    "time": "2026-05-16 15:55:29"
+  },
+  "button": {
+    "data": {
+      "emergency_stop": null,
+      "left_emergency_stop": null,
+      "right_emergency_stop": null,
+      "voice": null
+    },
+    "result": "success",
+    "time": "2026-05-16 15:55:34"
+  },
+  "light": {
+    "data": {
+      "red": "success",
+      "back_light": "success"
+    },
+    "time": "2026-05-16 16:05:31",
+    "result": "success"
+  },
+  "integrated": {
+    "data": {
+      "light_photo": "success",
+      "light_video": "success",
+      "thermal_photo": "success",
+      "thermal_video": "success",
+      "thermal_Temperature": "success",
+      "light_PTZ": "success",
+      "light_point": "success",
+      "thermal_point": "success",
+      "Manual_focusing": "success",
+      "Auto_focusing": "success"
+    },
+    "error": "",
+    "result": "success",
+    "time": "2026-05-16 17:14:46",
+    "current_task": "Auto_focusing"
+  }
+}

@@ -1,0 +1,314 @@
+<div class="test-ui">
+    <h2>防撞条检测</h2>
+    <p>用户自行判断：防撞条触发为红灯，语音播放机器人急停触发</p>
+    
+    <!-- 防撞条测试结果显示区域 -->
+    <div class="button-info">
+        <h3>测试结果</h3>
+        {% if current_model and model_config[current_model].get('anti_collision') %}
+            {% for strip in model_config[current_model]['anti_collision'] %}
+                <div class="button-item">
+                    <span class="button-label">
+                        {% if strip == 'front' %}前防撞条{% elif strip == 'back' %}后防撞条{% elif strip == 'left' %}左防撞条{% elif strip == 'right' %}右防撞条{% else %}{{ strip }}防撞条{% endif %}:
+                    </span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="button-value" id="{{ strip }}-result">未检测</span>
+                        <input type="number" id="{{ strip }}-newton" placeholder="输入N,标准<35N" style="width: 120px; padding: 4px 8px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px;">
+                        <button class="btn btn-sm btn-primary" id="{{ strip }}-test" onclick="testAntiCollision('{{ strip }}')">测试</button>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="button-item">
+                <span class="button-label">前防撞条:</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="button-value" id="front-result">未检测</span>
+                    <input type="number" id="front-newton" placeholder="输入N,标准<35N" style="width: 120px; padding: 4px 8px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px;">
+                    <button class="btn btn-sm btn-primary" id="front-test" onclick="testAntiCollision('front')">测试</button>
+                </div>
+            </div>
+            <div class="button-item">
+                <span class="button-label">后防撞条:</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="button-value" id="back-result">未检测</span>
+                    <input type="number" id="back-newton" placeholder="输入N,标准<35N" style="width: 120px; padding: 4px 8px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px;">
+                    <button class="btn btn-sm btn-primary" id="back-test" onclick="testAntiCollision('back')">测试</button>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="ui-buttons">
+        <button class="btn btn-primary" onclick="endTest('anti_collision', 'success')">测试成功</button>
+        <button class="btn btn-primary" onclick="endTest('anti_collision', 'failed')">测试失败</button>
+    </div>
+    <div class="test-time" id="test-time"></div>
+</div>
+
+<style>
+    .button-info {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #f9f9f9;
+    }
+    .button-info h3 {
+        margin-top: 0;
+        color: #555;
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+    .button-item {
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .button-item:last-child {
+        border-bottom: none;
+    }
+    .button-label {
+        font-weight: bold;
+        color: #333;
+    }
+    .button-value {
+        color: #666;
+    }
+    .test-time {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #999;
+        text-align: right;
+    }
+</style>
+
+<script>
+    // 存储防撞条状态
+    let antiCollisionStatus = {};
+    
+    // 初始化防撞条状态
+    function initAntiCollisionStatus() {
+        // 从模板中获取当前机型的防撞条子项配置
+        const collisionStrips = {% if current_model and model_config[current_model].get('anti_collision') %}
+            {{ model_config[current_model]['anti_collision'] | tojson }}
+        {% else %}
+            ['front', 'back']
+        {% endif %};
+        
+        // 初始化状态对象
+        collisionStrips.forEach(strip => {
+            antiCollisionStatus[strip] = null;
+        });
+    }
+    
+    // 页面加载时获取保存的防撞条状态
+    document.addEventListener('DOMContentLoaded', function() {
+        initAntiCollisionStatus();
+        loadAntiCollisionStatus();
+        
+        // 同时获取并更新测试状态
+        fetch('/get_test_status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.test_status) {
+                if (typeof updateAllTestStatus === 'function') {
+                    updateAllTestStatus(data.test_status);
+                }
+                if (data.test_times && data.test_times.anti_collision) {
+                    const testTimeElement = document.getElementById('test-time');
+                    if (testTimeElement) {
+                        testTimeElement.textContent = `测试时间: ${data.test_times.anti_collision}`;
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.log('获取测试状态失败:', error);
+        });
+    });
+    
+    function loadAntiCollisionStatus() {
+        const boundIp = sessionStorage.getItem('bound_ip') || '{{ bound_ip }}';
+        if (boundIp) {
+            fetch('/get_anti_collision_info')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.anti_collision_info) {
+                        const status = data.anti_collision_info;
+                        antiCollisionStatus = status;
+                        updateResultDisplays();
+                        // 显示测试时间
+                        const testTimeElement = document.getElementById('test-time');
+                        if (testTimeElement && data.test_time) {
+                            testTimeElement.textContent = `测试时间: ${data.test_time}`;
+                        }
+                        // 加载牛顿值到输入框
+                        if (data.newton_info) {
+                            Object.keys(data.newton_info).forEach(position => {
+                                const newtonInput = document.getElementById(`${position}-newton`);
+                                if (newtonInput) {
+                                    newtonInput.value = data.newton_info[position] || '';
+                                }
+                            });
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('获取防撞条状态失败:', error);
+                });
+        }
+    }
+    
+
+    
+    function endTest(testType, result) {
+        // 收集所有防撞条的牛顿值
+        const newtonValues = {};
+        const collisionStrips = {% if current_model and model_config[current_model].get('anti_collision') %}
+            {{ model_config[current_model]['anti_collision'] | tojson }}
+        {% else %}
+            ['front', 'back']
+        {% endif %};
+        
+        collisionStrips.forEach(strip => {
+            const newtonInput = document.getElementById(`${strip}-newton`);
+            if (newtonInput && newtonInput.value) {
+                newtonValues[strip] = parseFloat(newtonInput.value);
+            }
+        });
+        
+        fetch('/end_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                test_type: testType, 
+                result: result,
+                newton_values: newtonValues 
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTestStatus(testType, result);
+                // 自动跳转到下一个测试项目
+                const nextTestType = getNextTestType(testType);
+                if (nextTestType) {
+                    setTimeout(() => {
+                        navigateToTest(nextTestType);
+                    }, 500); // 延迟500ms跳转，给用户时间看到测试结果
+                }
+            }
+        });
+    }
+    
+    function testAntiCollision(stripType) {
+        let stripName;
+        if (stripType === 'front') {
+            stripName = '前防撞条';
+        } else if (stripType === 'back') {
+            stripName = '后防撞条';
+        } else if (stripType === 'left') {
+            stripName = '左防撞条';
+        } else if (stripType === 'right') {
+            stripName = '右防撞条';
+        } else {
+            stripName = stripType + '防撞条';
+        }
+        let startTime = Date.now();
+        const timeout = 30000; // 30秒超时
+        let step = 1; // 1: 等待触发, 2: 等待恢复
+        
+        const newtonInput = document.getElementById(`${stripType}-newton`);
+        const newtonValue = newtonInput ? parseFloat(newtonInput.value) : null;
+        
+        showLoading(`请触发${stripName}...`);
+        
+        function checkAntiCollisionStatus() {
+            if (Date.now() - startTime > timeout) {
+                hideLoading();
+                alert('测试超时，请在30秒内完成操作');
+                antiCollisionStatus[stripType] = 'failed';
+                updateResultDisplays();
+                return;
+            }
+            
+            fetch('/test_anti_collision', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    strip_type: stripType, 
+                    check_only: true 
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (step === 1) {
+                        if (data.value === 1) {
+                            // 防撞条已触发，进入第二步
+                            step = 2;
+                            showLoading(`请恢复${stripName}...`);
+                        }
+                    } else if (step === 2) {
+                        if (data.value === 0) {
+                            // 防撞条已恢复，测试成功
+                            hideLoading();
+                            antiCollisionStatus[stripType] = 'success';
+                            updateResultDisplays();
+                            // 保存测试结果
+                            fetch('/test_anti_collision', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ 
+                                    strip_type: stripType, 
+                                    newton_value: newtonValue, 
+                                    save_result: true 
+                                })
+                            });
+                            return;
+                        }
+                    }
+                    // 继续检查
+                    setTimeout(checkAntiCollisionStatus, 120);
+                } else {
+                    hideLoading();
+                    alert('测试失败: ' + (data.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('请求出错:', error);
+                alert('测试过程中出错');
+            });
+        }
+        
+        checkAntiCollisionStatus();
+    }
+    
+    function updateResultDisplays() {
+        // 遍历所有防撞条位置
+        Object.keys(antiCollisionStatus).forEach(position => {
+            const status = antiCollisionStatus[position];
+            const resultElement = document.getElementById(`${position}-result`);
+            
+            if (resultElement) {
+                if (status) {
+                    resultElement.textContent = status === 'success' ? '成功' : '失败';
+                    resultElement.style.color = status === 'success' ? 'green' : 'red';
+                } else {
+                    resultElement.textContent = '未检测';
+                    resultElement.style.color = '#666';
+                }
+            }
+        });
+    }
+</script>

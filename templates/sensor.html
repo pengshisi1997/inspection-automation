@@ -1,0 +1,273 @@
+<div class="test-ui">
+    <h2>传感器检测</h2>
+    <p>检测机器人的各种传感器是否正常工作</p>
+    
+    <!-- 传感器列表 -->
+    <div class="sensor-list">
+        <h3>传感器状态</h3>
+        {% if current_model and model_config[current_model].get('sensor') %}
+            {% for sensor in model_config[current_model]['sensor'] %}
+                <div class="sensor-item">
+                    <span class="sensor-name">
+                        {% if sensor == 'odom' %}里程计{% elif sensor == 'imu_data' %}IMU{% elif sensor == 'ks114_sensor' %}超声波{% elif sensor == 'tfmini_sensor' %}防跌落{% elif sensor == 'scan_1' %}雷达{% elif sensor == 'encoder' %}编码器{% elif sensor == 'cpu_hz' %}CPU频率{% elif sensor == 'temperature' %}温度{% elif sensor == 'humidity' %}湿度{% elif sensor == 'o2' %}气体版(氧气){% elif sensor == 'co' %}气体版(氧气){% elif sensor == 'microphone' %}拾音器{% elif sensor == 'fan_board' %}风扇板{% elif sensor == 'byz06_sensor' %}噪声传感器{% elif sensor == 'fs00802_sensor' %}气体版(氧气){% else %}{{ sensor }}{% endif %}:
+                    </span>
+                    <span class="sensor-status" id="{{ sensor | replace('_', '-') }}">未检测</span>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="sensor-item">
+                <span class="sensor-name">雷达:</span>
+                <span class="sensor-status" id="scan-1">未检测</span>
+            </div>
+            <div class="sensor-item">
+                <span class="sensor-name">IMU:</span>
+                <span class="sensor-status" id="imu-data">未检测</span>
+            </div>
+            <div class="sensor-item">
+                <span class="sensor-name">超声波:</span>
+                <span class="sensor-status" id="ks114-sensor">未检测</span>
+            </div>
+            <div class="sensor-item">
+                <span class="sensor-name">防跌落:</span>
+                <span class="sensor-status" id="tfmini-sensor">未检测</span>
+            </div>
+            <div class="sensor-item">
+                <span class="sensor-name">编码器:</span>
+                <span class="sensor-status" id="encoder">未检测</span>
+            </div>
+            <div class="sensor-item">
+                <span class="sensor-name">CPU频率:</span>
+                <span class="sensor-status" id="cpu-hz">未检测</span>
+            </div>
+            <div class="sensor-item">
+                <span class="sensor-name">温度:</span>
+                <span class="sensor-status" id="temperature">未检测</span>
+            </div>
+            <div class="sensor-item">
+                <span class="sensor-name">湿度:</span>
+                <span class="sensor-status" id="humidity">未检测</span>
+            </div>
+            <div class="sensor-item">
+                <span class="sensor-name">气体版(氧气):</span>
+                <span class="sensor-status" id="o2">未检测</span>
+            </div>
+            <div class="sensor-item" style="display: none;">
+                <span class="sensor-name">CO:</span>
+                <span class="sensor-status" id="co">未检测</span>
+            </div>
+            <div class="sensor-item">
+                <span class="sensor-name">拾音器:</span>
+                <span class="sensor-status" id="microphone">未检测</span>
+            </div>
+            <div class="sensor-item">
+                <span class="sensor-name">风扇板:</span>
+                <span class="sensor-status" id="fan-board">未检测</span>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="ui-buttons">
+        <button class="btn btn-primary" onclick="startTest('sensor')">开始测试</button>
+    </div>
+    <div class="test-time" id="test-time"></div>
+</div>
+
+<style>
+    .sensor-list {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #f9f9f9;
+    }
+    .sensor-list h3 {
+        margin-top: 0;
+        color: #555;
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+    .sensor-item {
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .sensor-item:last-child {
+        border-bottom: none;
+    }
+    .sensor-name {
+        font-weight: bold;
+        color: #333;
+    }
+    .sensor-status {
+        color: #666;
+    }
+    .test-time {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #999;
+        text-align: right;
+    }
+</style>
+
+<script>
+    function startTest(testType) {
+        showLoading();
+        
+        fetch('/start_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test_type: testType })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success && data.sensor_info) {
+                updateSensorInfo(data.sensor_info);
+                // 使用后端返回的result字段，而不是自己判断
+                const result = data.result || 'success';
+                
+                // 自动结束测试并保存结果
+                fetch('/end_test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ test_type: testType, result: result })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateTestStatus(testType, result);
+                        // 自动跳转到下一个测试项目
+                        const nextTestType = getNextTestType(testType);
+                        if (nextTestType) {
+                            setTimeout(() => {
+                                navigateToTest(nextTestType);
+                            }, 5000); // 延迟5000ms跳转，给用户时间看到测试结果
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('请求出错:', error);
+        });
+    }
+    
+    function updateSensorInfo(sensorInfo) {
+        // 遍历传感器信息对象的所有键
+        Object.keys(sensorInfo).forEach(key => {
+            // 跳过result和time字段
+            if (key !== 'result' && key !== 'time' && key !== 'data') {
+                // 直接使用key作为元素ID
+                const elementId = key.replace(/_/g, '-');
+                const sensorEl = document.getElementById(elementId);
+                if (sensorEl) {
+                    let value = sensorInfo[key];
+                    // 对拾音器进行特殊处理（仅文本，无颜色）
+                    if (key === 'microphone') {
+                        if (value === true) {
+                            sensorEl.textContent = '正常';
+                        } else if (value === false) {
+                            sensorEl.textContent = '异常';
+                        } else {
+                            sensorEl.textContent = '无数据';
+                        }
+                    } else if (key === 'o2') {
+                        // 对于O2，同时显示O2和CO的值
+                        let coValue = sensorInfo['co'] || (sensorInfo.data && sensorInfo.data['co']);
+                        if (coValue !== undefined) {
+                            sensorEl.textContent = `O2: ${value || '无数据'}, CO: ${coValue}`;
+                        } else {
+                            sensorEl.textContent = value ? JSON.stringify(value) : '无数据';
+                        }
+                    } else if (key === 'co') {
+                        // CO已经在O2中显示了，跳过
+                    } else {
+                        sensorEl.textContent = value ? JSON.stringify(value) : '无数据';
+                    }
+                }
+            }
+        });
+        
+        // 处理嵌套在data字段中的传感器数据
+        if (sensorInfo.data) {
+            Object.keys(sensorInfo.data).forEach(key => {
+                const elementId = key.replace(/_/g, '-');
+                const sensorEl = document.getElementById(elementId);
+                if (sensorEl) {
+                    let value = sensorInfo.data[key];
+                    // 对拾音器进行特殊处理（仅文本，无颜色）
+                    if (key === 'microphone') {
+                        if (value === true) {
+                            sensorEl.textContent = '正常';
+                        } else if (value === false) {
+                            sensorEl.textContent = '异常';
+                        } else {
+                            sensorEl.textContent = '无数据';
+                        }
+                    } else if (key === 'o2') {
+                        // 对于O2，同时显示O2和CO的值
+                        let coValue = sensorInfo.data['co'];
+                        if (coValue !== undefined) {
+                            sensorEl.textContent = `O2: ${value || '无数据'}, CO: ${coValue}`;
+                        } else {
+                            sensorEl.textContent = value ? JSON.stringify(value) : '无数据';
+                        }
+                    } else if (key === 'co') {
+                        // CO已经在O2中显示了，跳过
+                    } else {
+                        sensorEl.textContent = value ? JSON.stringify(value) : '无数据';
+                    }
+                }
+            });
+        }
+    }
+    
+
+    
+    // 页面加载时从JSON读取测试状态
+    document.addEventListener('DOMContentLoaded', function() {
+        // 读取传感器信息
+        fetch('/get_sensor_info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.sensor_info) {
+                updateSensorInfo(data.sensor_info);
+                // 显示测试时间
+                const testTimeElement = document.getElementById('test-time');
+                if (testTimeElement && data.sensor_info.time) {
+                    testTimeElement.textContent = `测试时间: ${data.sensor_info.time}`;
+                }
+            }
+        })
+        .catch(error => {
+            console.log('获取传感器信息失败:', error);
+        });
+        
+        // 同时获取并更新测试状态
+        fetch('/get_test_status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.test_status) {
+                if (typeof updateAllTestStatus === 'function') {
+                    updateAllTestStatus(data.test_status);
+                }
+                if (data.test_times && data.test_times.sensor) {
+                    const testTimeElement = document.getElementById('test-time');
+                    if (testTimeElement) {
+                        testTimeElement.textContent = `测试时间: ${data.test_times.sensor}`;
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.log('获取测试状态失败:', error);
+        });
+    });
+</script>

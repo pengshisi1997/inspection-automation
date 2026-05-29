@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试用例管理后台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f5f7fa;
+            min-height: 100vh;
+        }
+        .header {
+            background-color: #409eff;
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        .header a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .header a:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .card h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #555;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #409eff;
+            box-shadow: 0 0 0 2px rgba(64,158,255,0.2);
+        }
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background-color: #409eff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #66b1ff;
+        }
+        .btn-danger {
+            background-color: #f56c6c;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #f78989;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #868e96;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #666;
+        }
+        .table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .action-buttons .btn {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        .alert-success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        .alert-error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal {
+            background-color: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 {
+            font-size: 16px;
+            color: #333;
+        }
+        .modal-close {
+            cursor: pointer;
+            font-size: 20px;
+            color: #999;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s, background-color 0.3s;
+        }
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: #409eff;
+            background-color: #f0f7ff;
+        }
+        .upload-area i {
+            font-size: 48px;
+            color: #999;
+            margin-bottom: 12px;
+        }
+        .upload-area p {
+            color: #666;
+            font-size: 14px;
+        }
+        .file-list {
+            margin-top: 16px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .file-item span {
+            font-size: 14px;
+            color: #333;
+        }
+        .file-item button {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .file-item button:hover {
+            color: #f56c6c;
+        }
+        .model-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .model-tab {
+            padding: 8px 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .model-tab.active {
+            background-color: #409eff;
+            color: white;
+            border-color: #409eff;
+        }
+        .model-tab:hover:not(.active) {
+            border-color: #409eff;
+            color: #409eff;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>测试用例管理后台</h1>
+        <div class="nav-links">
+            <a href="/main">返回测试系统</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 版本配置区域 -->
+        <div class="card">
+            <h2>软件版本配置</h2>
+            <div class="form-group">
+                <label for="version-model-select">选择机型</label>
+                <select id="version-model-select">
+                    <option value="">请选择机型</option>
+                    <option value="MS">MS</option>
+                    <option value="MR">MR</option>
+                    <option value="TW">TW</option>
+                    <option value="X310">X310</option>
+                    <option value="X320">X320</option>
+                    <option value="HSR">HSR</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="pilot-version">Pilot版本</label>
+                <input type="text" id="pilot-version" placeholder="如: release/v3.8.0_xjyw_v1.5.21_20260313">
+            </div>
+            
+            <div class="form-group">
+                <label for="compass-version">Compass版本</label>
+                <input type="text" id="compass-version" placeholder="如: YOUICompassSetup-4.7.4-xjyw-V4.2.0-20260427.zip">
+            </div>
+            
+            <div class="form-group">
+                <label for="rcc-base-version">RCC_Base版本</label>
+                <input type="text" id="rcc-base-version" placeholder="如: v2.01">
+            </div>
+            
+            <div class="form-group">
+                <label for="image-version">工控机镜像版本</label>
+                <input type="text" id="image-version" placeholder="如: Pilot-4.0.3-desktop-2025-7-31.img">
+            </div>
+            
+            <button class="btn btn-primary" onclick="saveVersionConfig()">保存版本配置</button>
+        </div>
+
+        <!-- 版本配置列表 -->
+        <div class="card">
+            <h2>版本配置列表</h2>
+            <table class="table" id="version-table">
+                <thead>
+                    <tr>
+                        <th>机型</th>
+                        <th>Pilot版本</th>
+                        <th>Compass版本</th>
+                        <th>RCC_Base版本</th>
+                        <th>工控机镜像版本</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #999;">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 批量导入区域 -->
+        <div class="card">
+            <h2>批量导入测试用例（Excel）</h2>
+            <div class="form-group">
+                <label for="excel-model-select">选择机型</label>
+                <select id="excel-model-select">
+                    <option value="">请选择机型</option>
+                    <option value="MS">MS</option>
+                    <option value="MR">MR</option>
+                    <option value="TW">TW</option>
+                    <option value="X310">X310</option>
+                    <option value="X320">X320</option>
+                    <option value="HSR">HSR</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="excel-file">选择Excel文件</label>
+                <input type="file" id="excel-file" accept=".xlsx,.xls">
+                <p style="color: #666; font-size: 12px; margin-top: 8px;">支持 .xlsx 和 .xls 格式，Excel应包含：</p>
+                <ul style="color: #666; font-size: 12px; margin-top: 4px; margin-left: 20px;">
+                    <li><strong>测试用例名称</strong> - 测试用例的名称</li>
+                    <li><strong>测试用例描述</strong> - 测试步骤描述</li>
+                    <li><strong>预期结果</strong>（可选）- 预期的测试结果，会与描述合并</li>
+                </ul>
+            </div>
+            
+            <button class="btn btn-primary" onclick="uploadExcel()">批量导入</button>
+        </div>
+
+        <!-- 上传区域 -->
+        <div class="card">
+            <h2>上传单个测试用例</h2>
+            <div class="form-group">
+                <label for="model-select">选择机型</label>
+                <select id="model-select">
+                    <option value="">请选择机型</option>
+                    <option value="MS">MS</option>
+                    <option value="MR">MR</option>
+                    <option value="TW">TW</option>
+                    <option value="X310">X310</option>
+                    <option value="X320">X320</option>
+                    <option value="HSR">HSR</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="testcase-name">测试用例名称</label>
+                <input type="text" id="testcase-name" placeholder="请输入测试用例名称">
+            </div>
+            
+            <div class="form-group">
+                <label for="testcase-description">测试步骤</label>
+                <textarea id="testcase-description" placeholder="请输入测试步骤，用换行分隔"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="testcase-expected">预期结果</label>
+                <textarea id="testcase-expected" placeholder="请输入预期结果"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="testcase-confirm">成功确认内容</label>
+                <textarea id="testcase-confirm" placeholder="测试通过后弹出的确认内容，留空则不弹出确认框"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="testcase-image">关联图片（可选）</label>
+                <input type="file" id="testcase-image" accept="image/*">
+            </div>
+            
+            <button class="btn btn-primary" onclick="uploadTestcase()">上传测试用例</button>
+        </div>
+
+        <!-- 测试用例列表 -->
+        <div class="card">
+            <h2>测试用例列表</h2>
+            <div class="model-tabs" id="model-tabs">
+                <div class="model-tab active" data-model="">全部机型</div>
+                <div class="model-tab" data-model="MS">MS</div>
+                <div class="model-tab" data-model="MR">MR</div>
+                <div class="model-tab" data-model="TW">TW</div>
+                <div class="model-tab" data-model="X310">X310</div>
+                <div class="model-tab" data-model="X320">X320</div>
+                <div class="model-tab" data-model="HSR">HSR</div>
+            </div>
+            
+            <table class="table" id="testcase-table">
+                <thead>
+                    <tr>
+                        <th>序号</th>
+                        <th>机型</th>
+                        <th>测试用例名称</th>
+                        <th>描述</th>
+                        <th>图片</th>
+                        <th>排序</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: #999;">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 编辑模态框 -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>编辑测试用例</h3>
+                <span class="modal-close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="edit-name">测试用例名称</label>
+                    <input type="text" id="edit-name">
+                </div>
+                <div class="form-group">
+                    <label for="edit-description">测试步骤</label>
+                    <textarea id="edit-description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-expected">预期结果</label>
+                    <textarea id="edit-expected"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-confirm">成功确认内容</label>
+                    <textarea id="edit-confirm" placeholder="测试通过后弹出的确认内容，留空则不弹出确认框"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-image">关联图片（可选）</label>
+                    <input type="file" id="edit-image" accept="image/*">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEditModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveEdit()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentEditIndex = -1;
+        let currentEditModel = '';
+
+        // 加载版本配置列表
+        function loadVersionConfigs() {
+            fetch('/admin/get_version_configs')
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.querySelector('#version-table tbody');
+                    if (data.success && data.configs) {
+                        if (data.configs.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">暂无版本配置</td></tr>';
+                            return;
+                        }
+                        tbody.innerHTML = data.configs.map(item => `
+                            <tr>
+                                <td>${item.model}</td>
+                                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.pilot_version || '-'}</td>
+                                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.compass_version || '-'}</td>
+                                <td>${item.rcc_base_version || '-'}</td>
+                                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.image_version || '-'}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-primary" onclick="editVersionConfig('${item.model}')">编辑</button>
+                                        <button class="btn btn-danger" onclick="deleteVersionConfig('${item.model}')">删除</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">加载失败</td></tr>';
+                    }
+                });
+        }
+        
+        // 保存版本配置
+        function saveVersionConfig() {
+            const model = document.getElementById('version-model-select').value;
+            const pilotVersion = document.getElementById('pilot-version').value;
+            const compassVersion = document.getElementById('compass-version').value;
+            const rccBaseVersion = document.getElementById('rcc-base-version').value;
+            const imageVersion = document.getElementById('image-version').value;
+            
+            if (!model) {
+                alert('请选择机型');
+                return;
+            }
+            
+            fetch('/admin/save_version_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model,
+                    pilot_version: pilotVersion,
+                    compass_version: compassVersion,
+                    rcc_base_version: rccBaseVersion,
+                    image_version: imageVersion
+                })
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('保存成功');
+                    document.getElementById('version-model-select').value = '';
+                    document.getElementById('pilot-version').value = '';
+                    document.getElementById('compass-version').value = '';
+                    document.getElementById('rcc-base-version').value = '';
+                    document.getElementById('image-version').value = '';
+                    loadVersionConfigs();
+                } else {
+                    alert('保存失败: ' + (data.error || '未知错误'));
+                }
+            });
+        }
+        
+        // 编辑版本配置
+        function editVersionConfig(model) {
+            fetch(`/admin/get_version_config?model=${model}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('version-model-select').value = model;
+                        document.getElementById('pilot-version').value = data.config.pilot_version || '';
+                        document.getElementById('compass-version').value = data.config.compass_version || '';
+                        document.getElementById('rcc-base-version').value = data.config.rcc_base_version || '';
+                        document.getElementById('image-version').value = data.config.image_version || '';
+                    }
+                });
+        }
+        
+        // 删除版本配置
+        function deleteVersionConfig(model) {
+            if (!confirm(`确定要删除 ${model} 机型的版本配置吗？`)) {
+                return;
+            }
+            
+            fetch('/admin/delete_version_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model })
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('删除成功');
+                    loadVersionConfigs();
+                } else {
+                    alert('删除失败: ' + (data.error || '未知错误'));
+                }
+            });
+        }
+
+        // 加载测试用例列表
+        function loadTestcases(model = '') {
+            fetch(`/admin/get_testcases?model=${model}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.querySelector('#testcase-table tbody');
+                    if (data.success && data.testcases) {
+                        if (data.testcases.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #999;">暂无测试用例</td></tr>';
+                            return;
+                        }
+                        tbody.innerHTML = data.testcases.map((item, index) => `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${item.model}</td>
+                                <td>${item.name}</td>
+                                <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${typeof item.description === 'string' ? item.description : item.description.join('')}</td>
+                                <td>${item.image ? '<img src="/image/' + item.image + '" width="50" height="50" style="border-radius: 4px;">' : '无'}</td>
+                                <td>
+                                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                                        <button class="btn btn-secondary" onclick="moveTestcaseUp('${item.model}', ${index})" ${index === 0 ? 'disabled' : ''} title="上移">↑</button>
+                                        <button class="btn btn-secondary" onclick="moveTestcaseDown('${item.model}', ${index})" ${index === data.testcases.length - 1 ? 'disabled' : ''} title="下移">↓</button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn btn-primary" onclick="editTestcase('${item.model}', ${index})">编辑</button>
+                                        <button class="btn btn-danger" onclick="deleteTestcase('${item.model}', ${index})">删除</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #999;">加载失败</td></tr>';
+                    }
+                });
+        }
+        
+        function moveTestcaseUp(model, index) {
+            if (index <= 0) return;
+            fetch('/admin/move_testcase', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model, index, direction: 'up' })
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const activeTab = document.querySelector('.model-tab.active');
+                    const currentModel = activeTab.getAttribute('data-model');
+                    loadTestcases(currentModel);
+                } else {
+                    alert('移动失败: ' + (data.error || '未知错误'));
+                }
+            });
+        }
+        
+        function moveTestcaseDown(model, index) {
+            fetch('/admin/move_testcase', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model, index, direction: 'down' })
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const activeTab = document.querySelector('.model-tab.active');
+                    const currentModel = activeTab.getAttribute('data-model');
+                    loadTestcases(currentModel);
+                } else {
+                    alert('移动失败: ' + (data.error || '未知错误'));
+                }
+            });
+        }
+
+        // 上传测试用例
+        function uploadTestcase() {
+            const model = document.getElementById('model-select').value;
+            const name = document.getElementById('testcase-name').value;
+            const description = document.getElementById('testcase-description').value;
+            const expected = document.getElementById('testcase-expected').value;
+            const confirm_content = document.getElementById('testcase-confirm').value;
+            const image = document.getElementById('testcase-image').files[0];
+
+            if (!model) {
+                alert('请选择机型');
+                return;
+            }
+            if (!name) {
+                alert('请输入测试用例名称');
+                return;
+            }
+            if (!description) {
+                alert('请输入测试步骤');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('model', model);
+            formData.append('name', name);
+            formData.append('description', description);
+            formData.append('expected_result', expected);
+            formData.append('confirm_content', confirm_content);
+            if (image) {
+                formData.append('image', image);
+            }
+
+            fetch('/admin/upload_testcase', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('上传成功');
+                    document.getElementById('model-select').value = '';
+                    document.getElementById('testcase-name').value = '';
+                    document.getElementById('testcase-description').value = '';
+                    document.getElementById('testcase-expected').value = '';
+                    document.getElementById('testcase-confirm').value = '';
+                    document.getElementById('testcase-image').value = '';
+                    loadTestcases();
+                } else {
+                    alert('上传失败: ' + (data.error || '未知错误'));
+                }
+            });
+        }
+
+        // 编辑测试用例
+        function editTestcase(model, index) {
+            currentEditModel = model;
+            currentEditIndex = index;
+            
+            fetch(`/admin/get_testcases?model=${model}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.testcases[index]) {
+                        const item = data.testcases[index];
+                        document.getElementById('edit-name').value = item.name;
+                        document.getElementById('edit-description').value = typeof item.description === 'string' ? item.description : item.description.join('\n');
+                        document.getElementById('edit-expected').value = item.expected_result || '';
+                        document.getElementById('edit-confirm').value = item.confirm_content || '';
+                        document.getElementById('edit-modal').classList.add('show');
+                    }
+                });
+        }
+
+        // 关闭编辑模态框
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.remove('show');
+            currentEditIndex = -1;
+            currentEditModel = '';
+        }
+
+        // 保存编辑
+        function saveEdit() {
+            const name = document.getElementById('edit-name').value;
+            const description = document.getElementById('edit-description').value;
+            const expected = document.getElementById('edit-expected').value;
+            const confirm_content = document.getElementById('edit-confirm').value;
+            const image = document.getElementById('edit-image').files[0];
+
+            if (!name) {
+                alert('请输入测试用例名称');
+                return;
+            }
+            if (!description) {
+                alert('请输入测试步骤');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('model', currentEditModel);
+            formData.append('index', currentEditIndex);
+            formData.append('name', name);
+            formData.append('description', description);
+            formData.append('expected_result', expected);
+            formData.append('confirm_content', confirm_content);
+            if (image) {
+                formData.append('image', image);
+            }
+
+            fetch('/admin/update_testcase', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('保存成功');
+                    closeEditModal();
+                    const activeTab = document.querySelector('.model-tab.active');
+                    const currentModel = activeTab.getAttribute('data-model');
+                    loadTestcases(currentModel);
+                } else {
+                    alert('保存失败: ' + (data.error || '未知错误'));
+                }
+            });
+        }
+
+        // 删除测试用例
+        function deleteTestcase(model, index) {
+            if (!confirm('确定要删除这个测试用例吗？')) {
+                return;
+            }
+
+            fetch('/admin/delete_testcase', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model, index })
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('删除成功');
+                    const activeTab = document.querySelector('.model-tab.active');
+                    const currentModel = activeTab.getAttribute('data-model');
+                    loadTestcases(currentModel);
+                } else {
+                    alert('删除失败: ' + (data.error || '未知错误'));
+                }
+            });
+        }
+
+        // 切换机型标签
+        document.querySelectorAll('.model-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.model-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                const model = this.getAttribute('data-model');
+                loadTestcases(model);
+            });
+        });
+
+        // 批量导入Excel
+        function uploadExcel() {
+            const model = document.getElementById('excel-model-select').value;
+            const file = document.getElementById('excel-file').files[0];
+
+            if (!model) {
+                alert('请选择机型');
+                return;
+            }
+            if (!file) {
+                alert('请选择Excel文件');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('model', model);
+            formData.append('excel_file', file);
+
+            fetch('/admin/upload_excel', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    let message = `批量导入成功！共导入 ${data.count} 条测试用例`;
+                    if (data.skipped && data.skipped > 0) {
+                        message += `，跳过 ${data.skipped} 条无效数据（公式、说明行等）`;
+                    }
+                    alert(message);
+                    document.getElementById('excel-model-select').value = '';
+                    document.getElementById('excel-file').value = '';
+                    loadTestcases();
+                } else {
+                    alert('导入失败: ' + (data.error || '未知错误'));
+                }
+            });
+        }
+
+        // 页面加载时加载所有数据
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTestcases();
+            loadVersionConfigs();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+{
+  "robot_info": {
+    "sn": "33",
+    "tester": "请选择测试人员",
+    "model": "HSR",
+    "ip": "192.168.16.53"
+  },
+  "version": {
+    "pilot_version": "v4.0.6_ex100.251028.1",
+    "compass_version": "YOUICompassSetup-4.7.4-xjyw-V3.0-bl-20251229",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "mos_version_hsr": "2.6.21_ARIS",
+    "mirror_system_hsr": "Pilot-4.0.3-desktop-2025-11-27.img",
+    "rcc_base_version": "2.01",
+    "result": "success",
+    "time": "2026-05-21 10:59:15"
+  },
+  "sensor": {
+    "result": "success",
+    "data": {
+      "ks114_sensor": null,
+      "imu_data": {
+        "x": -0.0,
+        "y": 0.0,
+        "z": 0.808865809732,
+        "w": -0.587993283845
+      },
+      "encoder": [
+        50168421,
+        52891738
+      ],
+      "odom": {
+        "x": -28.0200710357,
+        "y": -8.91993695017,
+        "z": 0.0
+      },
+      "tfmini_sensor": null,
+      "cpu_hz": [
+        2812.28,
+        2815.159,
+        2837.44,
+        2813.416
+      ],
+      "scan_1": "大量数据"
+    },
+    "time": "2026-05-21 10:59:27"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "0.547 ms",
+      "192.168.2.63": "1.300 ms",
+      "192.168.2.88": "0.781 ms",
+      "192.168.2.90": "0.565 ms",
+      "192.168.2.250": "0.441 ms",
+      "192.168.2.2": "0.028 ms",
+      "192.168.2.89": "0.891 ms",
+      "192.168.0.100:8081": "0.100 ms"
+    },
+    "time": "2026-05-21 11:03:19"
+  },
+  "manual": {
+    "data": {
+      "雷达安装高度确认": {
+        "result": "success",
+        "time": "2026-05-21 13:03:26"
+      },
+      "底盘左右盖板检测": {
+        "result": "success",
+        "time": "2026-05-21 13:03:30"
+      },
+      "外观检查": {
+        "result": "success",
+        "time": "2026-05-21 13:07:41"
+      },
+      "雷达高度": {
+        "result": "success",
+        "time": "2026-05-21 13:03:36"
+      },
+      "整机尺寸确认": {
+        "result": "success",
+        "time": "2026-05-21 13:07:48"
+      }
+    },
+    "time": "2026-05-21 13:07:48"
+  },
+  "dynamic": {
+    "data": {
+      "直线": "success",
+      "切区": "success",
+      "横移": "success",
+      "沟壑": "success",
+      "45°夹角": "success",
+      "精定位": "success",
+      "云台": "success",
+      "上集成": "success",
+      "time": "2026-05-22 17:05:57"
+    },
+    "result": "success",
+    "time": "2026-05-22 17:05:57",
+    "current_step": "动态测试完成",
+    "step_status": "success",
+    "init_steps": [
+      {
+        "name": "切换手动模式",
+        "status": "success"
+      },
+      {
+        "name": "导入地图",
+        "status": "success"
+      },
+      {
+        "name": "上传任务",
+        "status": "success"
+      },
+      {
+        "name": "启用地图",
+        "status": "success"
+      },
+      {
+        "name": "同步车辆地图",
+        "status": "success"
+      },
+      {
+        "name": "手动重定位",
+        "status": "success"
+      },
+      {
+        "name": "切换自动模式",
+        "status": "success"
+      }
+    ],
+    "error": ""
+  }
+}

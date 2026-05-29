@@ -1,0 +1,85 @@
+{
+  "robot_info": {
+    "sn": "",
+    "tester": "请选择测试人员",
+    "model": "TW",
+    "ip": "192.168.16.158"
+  },
+  "version": {
+    "pilot_version": "feature_v4.0.3_xjyw.260413.2-x86_64-running",
+    "rcc_base_version": "2.01",
+    "robot_version": "robot-v1.1.2",
+    "rws_version": "v2.0.2",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "youiscript_version": "release_v2.0.0.8-x86_64-running",
+    "mos_version": "2.8.5_20260411",
+    "result": "success",
+    "time": "2026-05-08 16:18:14"
+  },
+  "sensor": {
+    "result": "success",
+    "data": {
+      "ks114_sensor": {
+        "front": {
+          "d0 02 B0": "D0 16 19 FF"
+        },
+        "back": {
+          "d2 02 B0": "D2 09 DD B8"
+        }
+      },
+      "imu_data": {
+        "x": 0.0119913164526,
+        "y": 0.00189494795632,
+        "z": -0.00552078848705,
+        "w": 0.99991106987
+      },
+      "odom": {
+        "x": 0.00648448181312,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "cpu_hz": [
+        4150.982,
+        4140.864,
+        3951.174,
+        4179.631
+      ],
+      "temperature": "NaN",
+      "humidity": "NaN",
+      "o2": 21.06999969482422,
+      "co": 1.0
+    },
+    "time": "2026-05-07 17:03:34"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "0.657 ms",
+      "192.168.2.63": "0.941 ms",
+      "192.168.2.250": "0.344 ms",
+      "192.168.0.100": "0.022 ms",
+      "192.168.2.2": "0.020 ms",
+      "192.168.2.100": "0.322 ms"
+    },
+    "time": "2026-05-08 16:18:42"
+  },
+  "button": {
+    "data": {
+      "emergency_stop": null,
+      "voice": null
+    },
+    "result": "success",
+    "time": "2026-05-07 16:22:46"
+  },
+  "light": {
+    "data": {
+      "back_light": "failed",
+      "front_light": "success",
+      "red": "success",
+      "blue": "success",
+      "green": "success"
+    },
+    "time": "2026-05-08 16:55:00",
+    "result": "success"
+  }
+}

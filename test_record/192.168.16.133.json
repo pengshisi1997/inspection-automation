@@ -1,0 +1,98 @@
+{
+  "robot_info": {
+    "sn": "",
+    "tester": "彭施思",
+    "model": "X310",
+    "ip": "192.168.16.133"
+  },
+  "version": {
+    "pilot_version": "release/v3.8.0_xjyw_v1.5.21_20260313",
+    "compass_version": "YOUICompassSetup-4.7.4-xjyw-V4.1.1-20250819.zip",
+    "rcc_base_version": "2.01",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "result": "failed",
+    "time": "2026-04-23 18:31:08"
+  },
+  "sensor": {
+    "result": "success",
+    "data": {
+      "ks114_sensor": [
+        2188,
+        2153,
+        5657,
+        5657
+      ],
+      "imu_data": {
+        "x": -0.000919980520848,
+        "y": 0.000434854271589,
+        "z": -0.463938683271,
+        "w": 0.885866701603
+      },
+      "encoder": [
+        0,
+        1
+      ],
+      "odom": {
+        "x": 4.23479680464,
+        "y": 19.5686254185,
+        "z": 0.0
+      },
+      "tfmini_sensor": [
+        60,
+        58,
+        57,
+        65
+      ],
+      "cpu_hz": [
+        3131.202,
+        3134.258,
+        3136.664,
+        3141.702
+      ],
+      "scan_1": "大量数据"
+    },
+    "time": "2026-04-23 18:38:08"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "0.685 ms",
+      "192.168.2.63": "0.272 ms",
+      "192.168.2.250": "0.428 ms",
+      "192.168.0.100": "0.019 ms",
+      "192.168.2.2": "0.018 ms",
+      "192.168.0.100:8081": "0.100 ms"
+    },
+    "time": "2026-04-23 18:38:24"
+  },
+  "button": {
+    "data": {
+      "emergency_stop": "success",
+      "voice": "success"
+    },
+    "time": "2026-04-23 18:38:44",
+    "result": "success"
+  },
+  "anti_collision": {
+    "data": {
+      "front": "success",
+      "back": "success"
+    },
+    "newton": {},
+    "time": "2026-04-23 18:38:59",
+    "result": "success"
+  },
+  "speaker": {
+    "result": "success",
+    "time": "2026-04-23 18:39:05"
+  },
+  "light": {
+    "data": {
+      "red": "success",
+      "blue": "success",
+      "green": "success"
+    },
+    "time": "2026-04-23 18:39:20",
+    "result": "success"
+  }
+}

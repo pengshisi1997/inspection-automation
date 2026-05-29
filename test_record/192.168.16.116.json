@@ -1,0 +1,17 @@
+{
+  "robot_info": {
+    "sn": "SNH202505016",
+    "tester": "彭施思",
+    "model": "TW",
+    "ip": "192.168.16.116"
+  },
+  "version": {
+    "pilot_version": "feature_v4.0.3_xjyw.260413.2-x86_64-running",
+    "rcc_base_version": "2.01",
+    "robot_version": "robot-v1.1.1",
+    "rws_version": "YOUIRWS_v2.0.2",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "result": "success",
+    "time": "2026-04-14 15:24:51"
+  }
+}

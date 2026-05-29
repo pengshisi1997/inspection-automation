@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>机器人巡检自动化</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            height: 100vh;
+            overflow-x: hidden;
+        }
+        
+
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        /* 左侧栏样式 */
+        .left-sidebar {
+            width: 250px;
+            background-color: #ffffff;
+            border-right: 1px solid #ddd;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        /* 右侧栏样式 */
+        .right-sidebar {
+            width: 300px;
+            background-color: #ffffff;
+            border-left: 1px solid #ddd;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .left-sidebar h1 {
+            text-align: center;
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        /* IP绑定区域 */
+        .ip-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .ip-section h2 {
+            margin-top: 0;
+            color: #555;
+            font-size: 16px;
+        }
+        .ip-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .ip-input-group input {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .ip-input-group input:disabled {
+            background-color: #e9e9e9;
+            cursor: not-allowed;
+        }
+        /* 测试区域 */
+        .test-section {
+            margin-bottom: 20px;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #555;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .test-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .test-item:hover {
+            background-color: #f0f0f0;
+        }
+        .test-item.active {
+            background-color: #e3f2fd;
+            border-color: #2196f3;
+        }
+        .test-item-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-circle {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #ccc;
+            display: inline-block;
+            position: relative;
+        }
+        .status-circle.pending {
+            background-color: transparent;
+        }
+        .status-circle.success {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .status-circle.success::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .status-circle.failed {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        .status-circle.failed::after {
+            content: '✗';
+            color: white;
+            font-size: 12px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .test-item h3 {
+            margin: 0;
+            color: #333;
+            font-size: 14px;
+        }
+        .test-item-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+            text-align: right;
+        }
+        /* 中间栏样式 */
+        .main-content {
+            flex: 1;
+            background-color: #f5f5f5;
+            padding: 30px;
+            overflow-y: auto;
+        }
+        .test-ui {
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .test-ui h2 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        /* 按钮样式 */
+        .btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0069d9;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        .btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .ui-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        /* Loading 遮罩层样式 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .loading-overlay.active {
+            display: flex;
+        }
+        .loading-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            width: 400px;
+            max-width: 90%;
+            text-align: center;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: #333;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading 遮罩层 -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">正在测试中...</div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- 左侧栏 -->
+        <div class="left-sidebar">
+            
+            <!-- 测试项目列表 -->
+            <div class="test-section">
+                <h2>测试项目</h2>
+                
+                {% set test_names = {
+                    'version': '版本检测',
+                    'sensor': '传感器检测',
+                    'ping': '网络Ping测试',
+                    'anti_collision': '防撞条检测',
+                    'speaker': '扬声器检测',
+                    'button': '按钮测试',
+                    'light': '灯光测试',
+                    'lift_motor': '升降电机测试',
+                    'dynamic': '动态测试',
+                    'integrated': '集成测试',
+                    'manual': '人工测试',
+                } %}
+                
+                {% for test_type in test_order %}
+                <div class="test-item {% if active_test == test_type %}active{% endif %}" onclick="navigateToTest('{{ test_type }}')">
+                    <div class="test-item-header">
+                        <div class="status-circle {{ 'pending' if test_status[test_type] == 'pending' else 'success' if test_status[test_type] == 'success' else 'failed' }}"></div>
+                        <h3>{{ test_names[test_type] }}</h3>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- 中间栏 -->
+        <div class="main-content">
+            {% if active_test %}
+                <!-- 显示选中测试项的UI -->
+                {% include active_test ~ '.html' %}
+            {% else %}
+                <!-- 默认显示 -->
+                <div class="test-ui">
+                    <h2>请选择一个测试项目</h2>
+                    <p>从左侧列表中选择一个测试项目开始测试</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- 右侧栏 -->
+        <div class="right-sidebar">
+            <h2>机器人信息</h2>
+            <!-- IP绑定区域 -->
+            <div class="ip-section">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #555;">IP信息</h3>
+                <div class="ip-input-group">
+                    <input type="text" id="ip-input" placeholder="输入机器人IP地址" disabled value="{{ bound_ip or '' }}">
+                </div>
+            </div>
+            
+            <!-- 机器人详细信息区域 -->
+            <div style="margin-top: 30px;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #555;">详细信息</h3>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 14px; color: #666;">机器人SN</label>
+                        <input type="text" id="sn-input" placeholder="请输入SN" value="{{ robot_info.sn or '' }}" style="width: 100%; padding: 8px 12px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 14px; color: #666;">测试人员</label>
+                        <select id="tester-select" style="width: 100%; padding: 8px 12px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px;">
+                            <!-- <option value="请选择测试人员" {% if robot_info.tester == '初始人员' %}selected{% endif %}>请选择测试人员</option> -->
+                            <option value="请选择测试人员" {% if robot_info.tester == '请选择测试人员' %}selected{% endif %}>请选择测试人员</option>
+                            <option value="唐子强" {% if robot_info.tester == '唐子强' %}selected{% endif %}>唐子强</option>
+                            <option value="彭施思" {% if robot_info.tester == '彭施思' %}selected{% endif %}>彭施思</option>
+                            <option value="谭雄劲" {% if robot_info.tester == '谭雄劲' %}selected{% endif %}>谭雄劲</option>
+                            <option value="钱康杰" {% if robot_info.tester == '钱康杰' %}selected{% endif %}>钱康杰</option>
+                            <option value="柯洋洋" {% if robot_info.tester == '柯洋洋' %}selected{% endif %}>柯洋洋</option>
+                            <option value="马天宇" {% if robot_info.tester == '马天宇' %}selected{% endif %}>马天宇</option>
+                            <option value="雷小东" {% if robot_info.tester == '雷小东' %}selected{% endif %}>雷小东</option>
+                            <option value="刘梅" {% if robot_info.tester == '刘梅' %}selected{% endif %}>刘梅</option>
+                            <option value="容小娟" {% if robot_info.tester == '容小娟' %}selected{% endif %}>容小娟</option>
+
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 5px; font-size: 14px; color: #666;">机型</label>
+                        <select id="model-select" style="width: 100%; padding: 8px 12px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">请选择机型</option>
+                            <option value="MS" {% if robot_info.model == 'MS' %}selected{% endif %}>MS</option>
+                            <option value="TW" {% if robot_info.model == 'TW' %}selected{% endif %}>TW</option>
+                            <option value="MR" {% if robot_info.model == 'MR' %}selected{% endif %}>MR</option>
+                            <option value="X310" {% if robot_info.model == 'X310' %}selected{% endif %}>X310</option>
+                            <option value="X320" {% if robot_info.model == 'X320' %}selected{% endif %}>X320</option>
+                            <option value="HSR" {% if robot_info.model == 'HSR' %}selected{% endif %}>HSR</option>
+                        </select>
+                    </div>
+                    <button id="update-info-btn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">更新信息</button>
+                    <button id="generate-report-btn" class="btn btn-primary" style="margin-top: 15px; width: 100%;">生成报告</button>
+                    <button id="back-to-login-btn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">返回登录页</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局 Loading 控制函数
+        function showLoading(text) {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const loadingText = loadingOverlay.querySelector('.loading-text');
+            if (loadingText) {
+                loadingText.textContent = text || '正在测试中...';
+            }
+            loadingOverlay.classList.add('active');
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.remove('active');
+        }
+        
+        // 更新测试状态函数（通用）
+        function updateTestStatus(testType, result) {
+            const testItems = document.querySelectorAll('.test-item');
+            testItems.forEach(item => {
+                const h3 = item.querySelector('h3');
+                const testNames = {
+                    'version': '版本检测',
+                    'sensor': '传感器检测',
+                    'ping': '网络Ping测试',
+                    'anti_collision': '防撞条检测',
+                    'speaker': '扬声器检测',
+                    'button': '按钮测试',
+                    'light': '灯光测试',
+                    'lift_motor': '升降电机测试',
+                    'dynamic': '动态测试',
+                    'manual': '人工测试',
+                };
+                if (h3 && h3.textContent.includes(testNames[testType])) {
+                    const circle = item.querySelector('.status-circle');
+                    if (circle) {
+                        // 对于人工测试，如果结果是completed，不设置任何状态
+                        if (testType === 'manual' && result === 'completed') {
+                            // 保持原样，不做任何修改
+                        } else {
+                            circle.className = 'status-circle ' + (result === 'success' ? 'success' : 'failed');
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 导航到测试项
+        function navigateToTest(testType) {
+            window.location.href = '/main/' + testType;
+        }
+        
+        // 更新所有测试项的状态
+        function updateAllTestStatus(testStatus) {
+            const testItems = document.querySelectorAll('.test-item');
+            const testNames = {
+                'version': '版本检测',
+                'sensor': '传感器检测',
+                'ping': '网络Ping测试',
+                'anti_collision': '防撞条检测',
+                'speaker': '扬声器检测',
+                'button': '按钮测试',
+                'light': '灯光测试',
+                'lift_motor': '升降电机测试',
+                'dynamic': '动态测试',
+                'manual': '人工测试',
+            };
+            
+            testItems.forEach(item => {
+                const h3 = item.querySelector('h3');
+                if (h3) {
+                    for (const [testType, testName] of Object.entries(testNames)) {
+                        if (h3.textContent.includes(testName)) {
+                            const circle = item.querySelector('.status-circle');
+                            if (circle && testStatus[testType]) {
+                                // 对于人工测试，只有状态是success或failed时才设置
+                                if (testType === 'manual' && !['success', 'failed'].includes(testStatus[testType])) {
+                                    // 保持原样，不做任何修改
+                                } else {
+                                    circle.className = 'status-circle ' + testStatus[testType];
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 更新信息按钮功能
+        document.getElementById('update-info-btn').addEventListener('click', function() {
+            const sn = document.getElementById('sn-input').value;
+            const tester = document.getElementById('tester-select').value;
+            const model = document.getElementById('model-select').value;
+            const ip = document.getElementById('ip-input').value;
+            
+            if (!ip) {
+                alert('请先输入并绑定IP地址');
+                return;
+            }
+            
+            fetch('/update_robot_info', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    sn: sn,
+                    tester: tester,
+                    model: model,
+                    ip: ip 
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('信息更新成功');
+                    location.reload();
+                } else {
+                    alert('信息更新失败');
+                }
+            });
+        });
+
+        // 生成报告按钮功能
+        document.getElementById('generate-report-btn').addEventListener('click', function() {
+            const ip = document.getElementById('ip-input').value;
+            
+            if (!ip) {
+                alert('请先绑定IP地址');
+                return;
+            }
+            
+            window.location.href = '/generate_report';
+        });
+
+        // 返回登录页按钮功能
+        document.getElementById('back-to-login-btn').addEventListener('click', function() {
+            window.location.href = '/';
+        });
+        
+        // 页面加载时获取测试状态
+        window.onload = function() {
+            fetch('/get_test_status')
+            .then(response => response.json())
+            .then(statusData => {
+                if (statusData.success) {
+                    updateAllTestStatus(statusData.test_status);
+                }
+            });
+        };
+        
+        // 测试项名称映射
+        const testNames = {
+            'version': '版本检测',
+            'sensor': '传感器检测',
+            'ping': '网络Ping测试',
+            'anti_collision': '防撞条检测',
+            'speaker': '扬声器检测',
+            'button': '按钮测试',
+            'light': '灯光测试',
+            'lift_motor': '升降电机测试',
+            'dynamic': '动态测试',
+            'manual': '人工测试',
+        };
+        
+        // 测试项顺序列表
+        let testOrder = {{ test_order | tojson }};
+        
+        // 获取下一个测试项目
+        function getNextTestType(currentTestType) {
+            const currentIndex = testOrder.indexOf(currentTestType);
+            if (currentIndex < testOrder.length - 1) {
+                return testOrder[currentIndex + 1];
+            }
+            return null; // 已经是最后一个测试项目
+        }
+        
+        // 动态更新测试顺序
+        function updateTestOrder(newOrder) {
+            testOrder = newOrder;
+            // 这里可以添加更新UI的逻辑，如果需要的话
+        }
+        
+
+    </script>
+</body>
+</html>

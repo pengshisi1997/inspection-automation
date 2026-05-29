@@ -1,0 +1,301 @@
+<div class="test-ui">
+    <h2>版本检测</h2>
+    <p>检测机器人的固件版本是否最新</p>
+    
+    <!-- 版本对比表格 -->
+    <div class="version-table-container">
+        <table class="version-table">
+            <thead>
+                <tr>
+                    <th>版本类型</th>
+                    <th>标准版本</th>
+                    <th>当前版本</th>
+                </tr>
+            </thead>
+            <tbody id="version-table-body">
+                {% set version_labels = {
+                    'pilot_version': 'Pilot版本',
+                    'compass_version': 'Compass版本',
+                    'mirror_system': '工控机镜像版本',
+                    'mirror_system_hsr': '上集成工控机镜像',
+                    'mos_version': 'MOS版本',
+                    'mos_version_hsr': '上集成MOS版本',
+                    'rcc_base_version': 'RCC_Base版本',
+                    'robot_version': 'Robot版本',
+                    'rws_version': 'RWS版本',
+                    'youiscript_version': 'Youiscript版本'
+                } %}
+                {% if current_model and model_config[current_model].get('version') %}
+                    {% for version_item in model_config[current_model]['version'] %}
+                        <tr>
+                            <td class="version-type">
+                                {{ version_labels.get(version_item, version_item + '版本') }}
+                            </td>
+                            <td class="standard-version" data-key="{{ version_item }}">未获取</td>
+                            <td class="current-version">
+                                <span id="{{ version_item | replace('_', '-') }}">未检测</span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td class="version-type">Pilot版本</td>
+                        <td class="standard-version" data-key="pilot_version">未获取</td>
+                        <td class="current-version">
+                            <span id="pilot-version">未检测</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="version-type">Compass版本</td>
+                        <td class="standard-version" data-key="compass_version">未获取</td>
+                        <td class="current-version">
+                            <span id="compass-version">未检测</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="version-type">工控机镜像版本</td>
+                        <td class="standard-version" data-key="mirror_system">未获取</td>
+                        <td class="current-version">
+                            <span id="mirror-system">未检测</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="version-type">RCC_Base版本</td>
+                        <td class="standard-version" data-key="rcc_base_version">未获取</td>
+                        <td class="current-version">
+                            <span id="rcc-base-version">未检测</span>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="ui-buttons">
+        <button class="btn btn-primary" onclick="startTest('version')">开始测试</button>
+    </div>
+    <div class="test-time" id="test-time"></div>
+</div>
+
+<style>
+    .version-table-container {
+        margin: 20px 0;
+        overflow-x: auto;
+    }
+    .version-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #ddd;
+        background-color: #f9f9f9;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .version-table th {
+        background-color: #f2f2f2;
+        border-bottom: 2px solid #ddd;
+        padding: 12px;
+        text-align: center;
+        font-weight: bold;
+        color: #333;
+    }
+    .version-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+        text-align: center;
+    }
+    .version-table tr:last-child td {
+        border-bottom: none;
+    }
+    .version-type {
+        font-weight: bold;
+        color: #333;
+        width: 30%;
+    }
+    .standard-version {
+        color: #2e7d32;
+        font-weight: 500;
+        width: 35%;
+    }
+    .current-version {
+        color: #666;
+        width: 35%;
+    }
+    .test-time {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #999;
+        text-align: right;
+    }
+</style>
+
+<script>
+    function startTest(testType) {
+        showLoading();
+        
+        fetch('/start_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test_type: testType })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            if (data.success) {
+                if (testType === 'version' && data.version_info) {
+                    updateVersionInfo(data.version_info);
+                    const testTimeElement = document.getElementById('test-time');
+                    if (testTimeElement && data.version_info.time) {
+                        testTimeElement.textContent = `测试时间: ${data.version_info.time}`;
+                    }
+                    // 更新左边栏测试状态
+                    if (data.version_info.result) {
+                        updateTestStatus(testType, data.version_info.result);
+                        // 自动跳转到下一个测试项目
+                        const nextTestType = getNextTestType(testType);
+                        if (nextTestType) {
+                            setTimeout(() => {
+                                navigateToTest(nextTestType);
+                            }, 5000); // 延迟5000ms跳转，给用户时间看到测试结果
+                        }
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('请求出错:', error);
+        });
+    }
+    
+    function updateVersionInfo(versionInfo) {
+        // 遍历版本信息对象的所有键
+        Object.keys(versionInfo).forEach(key => {
+            // 跳过result和time字段
+            if (key !== 'result' && key !== 'time') {
+                // 将所有下划线转换为连字符，以匹配HTML中的id
+                const elementId = key.replace(/_/g, '-');
+                const versionEl = document.getElementById(elementId);
+                if (versionEl) {
+                    let value = versionInfo[key];
+                    // 为RCC_Base版本添加"v"前缀，无论是否有值都确保正确显示
+                    if (key === 'rcc_base_version') {
+                        if (value && value !== 'success' && value !== 'failed') {
+                            // 确保版本号不以v开头，然后添加v前缀
+                            if (typeof value === 'string' && !value.startsWith('v')) {
+                                versionEl.textContent = 'v' + value;
+                            } else {
+                                versionEl.textContent = value;
+                            }
+                        } else if (value === 'success' || value === 'failed') {
+                            // 如果值是测试结果，显示'未检测'
+                            versionEl.textContent = '未检测';
+                        } else {
+                            versionEl.textContent = '检测失败';
+                        }
+                    } else {
+                        versionEl.textContent = value || '检测失败';
+                    }
+                }
+            }
+        });
+    }
+    
+    function endTest(testType, result) {
+        fetch('/end_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test_type: testType, result: result })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTestStatus(testType, result);
+                // 自动跳转到下一个测试项目
+                const nextTestType = getNextTestType(testType);
+                if (nextTestType) {
+                    setTimeout(() => {
+                        navigateToTest(nextTestType);
+                    }, 5000); // 延迟5000ms跳转，给用户时间看到测试结果
+                }
+            }
+        });
+    }
+    
+    // 获取并显示标准版本信息
+    function fetchAndDisplayStandardVersions() {
+        document.querySelectorAll('.standard-version').forEach(cell => {
+            cell.textContent = '未配置';
+        });
+
+        fetch('/get_version_standards')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.standards) {
+                // 遍历标准版本信息
+                Object.keys(data.standards).forEach(key => {
+                    const standardCells = document.querySelectorAll(`.standard-version[data-key="${key}"]`);
+                    standardCells.forEach(cell => {
+                        let value = data.standards[key];
+                        if (!value) {
+                            cell.textContent = '未配置';
+                        } else if (key === 'rcc_base_version') {
+                            cell.textContent = 'v' + value;
+                        } else {
+                            cell.textContent = value;
+                        }
+                    });
+                });
+            }
+        })
+        .catch(error => {
+            console.log('获取标准版本信息失败:', error);
+        });
+    }
+    
+    // 页面加载时从JSON读取版本信息
+    document.addEventListener('DOMContentLoaded', function() {
+        // 读取版本信息
+        fetch('/get_version_info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.version_info) {
+                updateVersionInfo(data.version_info);
+                // 显示测试时间
+                const testTimeElement = document.getElementById('test-time');
+                if (testTimeElement && data.version_info.time) {
+                    testTimeElement.textContent = `测试时间: ${data.version_info.time}`;
+                }
+            }
+        })
+        .catch(error => {
+            console.log('获取版本信息失败:', error);
+        });
+        
+        // 获取并显示标准版本
+        fetchAndDisplayStandardVersions();
+        
+        // 同时获取并更新测试状态
+        fetch('/get_test_status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.test_status) {
+                if (typeof updateAllTestStatus === 'function') {
+                    updateAllTestStatus(data.test_status);
+                }
+                if (data.test_times && data.test_times.version) {
+                    const testTimeElement = document.getElementById('test-time');
+                    if (testTimeElement) {
+                        testTimeElement.textContent = `测试时间: ${data.test_times.version}`;
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.log('获取测试状态失败:', error);
+        });
+    });
+</script>

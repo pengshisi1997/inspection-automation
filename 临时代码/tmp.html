@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>摄像头录像</title>
+<style>
+body{
+    font-family: Arial;
+    text-align:center;
+}
+
+video{
+    width:480px;
+    height:360px;
+    border:2px solid #333;
+    margin-top:20px;
+}
+
+button{
+    margin:10px;
+    padding:10px 20px;
+    font-size:16px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>摄像头录像演示</h2>
+
+<video id="preview" autoplay muted></video>
+
+<br>
+
+<button onclick="startRecord()">开始录像</button>
+<button onclick="stopRecord()">结束录像</button>
+
+<script>
+
+let mediaRecorder
+let recordedChunks=[]
+let stream
+
+async function startRecord(){
+
+    stream = await navigator.mediaDevices.getUserMedia({
+        video:true,
+        audio:true
+    })
+
+    const video = document.getElementById("preview")
+    video.srcObject = stream
+
+    mediaRecorder = new MediaRecorder(stream)
+
+    mediaRecorder.ondataavailable = function(e){
+        recordedChunks.push(e.data)
+    }
+
+    mediaRecorder.start()
+
+    console.log("开始录像")
+}
+
+function stopRecord(){
+
+    mediaRecorder.stop()
+
+    mediaRecorder.onstop = function(){
+
+        const blob = new Blob(recordedChunks,{type:"video/webm"})
+        recordedChunks=[]
+
+        const url = URL.createObjectURL(blob)
+
+        const a = document.createElement("a")
+        a.href = url
+        a.download = "record.webm"
+        a.click()
+
+        stream.getTracks().forEach(track=>track.stop())
+
+        console.log("录像已保存")
+    }
+}
+
+</script>
+
+</body>
+</html>

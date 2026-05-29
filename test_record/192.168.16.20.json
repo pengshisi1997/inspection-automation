@@ -1,0 +1,223 @@
+{
+  "robot_info": {
+    "sn": "202508020",
+    "tester": "马天宇",
+    "model": "MS",
+    "ip": "192.168.16.20"
+  },
+  "version": {
+    "pilot_version": "release/v3.8.0_xjyw_v1.5.21_20260313",
+    "compass_version": "YOUICompassSetup-4.7.4-xjyw-V4.2.0-20260416.zip",
+    "rcc_base_version": "2.01",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "result": "success",
+    "time": "2026-04-23 13:08:06"
+  },
+  "sensor": {
+    "result": "success",
+    "data": {
+      "ks114_sensor": [
+        5657,
+        5657,
+        1303,
+        1304
+      ],
+      "imu_data": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.040740208146,
+        "w": 0.999169773082
+      },
+      "encoder": [
+        13035421,
+        13019831
+      ],
+      "odom": {
+        "x": -30.5908935234,
+        "y": 17.9034953403,
+        "z": 0.0
+      },
+      "cpu_hz": [
+        3168.381,
+        3173.356,
+        3160.018,
+        3167.983
+      ],
+      "scan_1": "大量数据"
+    },
+    "time": "2026-04-23 13:08:00"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "0.662 ms",
+      "192.168.2.63": "0.789 ms",
+      "192.168.2.250": "0.457 ms",
+      "192.168.0.100": "0.021 ms",
+      "192.168.2.2": "0.022 ms",
+      "192.168.0.100:8081": "0.100 ms"
+    },
+    "time": "2026-04-23 13:08:11"
+  },
+  "dynamic": {
+    "data": {
+      "直线": "success",
+      "切区": "success",
+      "曲线": "success",
+      "沟壑": "success",
+      "云台": "success",
+      "time": "2026-04-23 13:18:48"
+    },
+    "result": "success",
+    "time": "2026-04-23 13:18:53",
+    "current_step": "动态测试完成",
+    "step_status": "success",
+    "init_steps": [
+      {
+        "name": "切换手动模式",
+        "status": "success"
+      },
+      {
+        "name": "导入地图",
+        "status": "success"
+      },
+      {
+        "name": "上传任务",
+        "status": "success"
+      },
+      {
+        "name": "启用地图",
+        "status": "success"
+      },
+      {
+        "name": "同步车辆地图",
+        "status": "success"
+      },
+      {
+        "name": "手动重定位",
+        "status": "success"
+      },
+      {
+        "name": "切换自动模式",
+        "status": "success"
+      }
+    ],
+    "error": ""
+  },
+  "light": {
+    "data": {
+      "red": "success",
+      "blue": "success",
+      "green": "success"
+    },
+    "time": "2026-04-23 13:20:39",
+    "result": "success"
+  },
+  "speaker": {
+    "result": "success",
+    "time": "2026-04-23 13:20:37"
+  },
+  "anti_collision": {
+    "data": {
+      "front": "success",
+      "back": "success"
+    },
+    "newton": {
+      "front": 20,
+      "back": 20
+    },
+    "time": "2026-04-23 13:20:32",
+    "result": "success"
+  },
+  "button": {
+    "data": {
+      "emergency_stop": "success",
+      "voice": null
+    },
+    "result": "success",
+    "time": "2026-04-23 13:20:16"
+  },
+  "manual": {
+    "data": {
+      "外观检查": {
+        "result": "success",
+        "time": "2026-04-23 13:20:45"
+      },
+      "雷达高度": {
+        "result": "success",
+        "time": "2026-04-23 13:20:46"
+      },
+      "铭牌信息检查": {
+        "result": "success",
+        "time": "2026-04-23 13:20:47"
+      },
+      "ECN变更检查": {
+        "result": "success",
+        "time": "2026-04-23 13:20:49"
+      },
+      "外部调试网口检查": {
+        "result": "success",
+        "time": "2026-04-23 13:20:50"
+      },
+      "异响检查": {
+        "result": "success",
+        "time": "2026-04-23 13:20:55"
+      },
+      "ESD防静电": {
+        "result": "success",
+        "time": "2026-04-23 13:20:56"
+      },
+      "超声波距离": {
+        "result": "success",
+        "time": "2026-04-23 13:20:57"
+      },
+      "手动充电": {
+        "result": "success",
+        "time": "2026-04-23 13:20:58"
+      },
+      "手动建图": {
+        "result": "success",
+        "time": "2026-04-23 13:21:00"
+      },
+      "手动遥控声光": {
+        "result": "success",
+        "time": "2026-04-23 13:21:01"
+      },
+      "10米直线误差": {
+        "result": "success",
+        "time": "2026-04-23 13:21:03"
+      },
+      "节点开启和关闭检查": {
+        "result": "success",
+        "time": "2026-04-23 13:21:04"
+      },
+      "精度测试": {
+        "result": "success",
+        "time": "2026-04-23 13:21:06",
+        "note": "只测0.8速度"
+      },
+      "雷达避障": {
+        "result": "success",
+        "time": "2026-04-23 13:21:07"
+      },
+      "超声波避障": {
+        "result": "success",
+        "time": "2026-04-23 13:21:09"
+      },
+      "防撞条避障": {
+        "result": "success",
+        "time": "2026-04-23 13:21:11"
+      },
+      "自动充电": {
+        "result": "success",
+        "time": "2026-04-23 13:21:12",
+        "note": "51.1v"
+      },
+      "老化数据": {
+        "result": "success",
+        "time": "2026-04-23 13:21:14"
+      }
+    },
+    "time": "2026-04-23 13:21:45"
+  }
+}

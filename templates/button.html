@@ -1,0 +1,359 @@
+<div class="test-ui">
+    <h2>按钮测试</h2>
+    {% if current_model == 'MR' %}
+    <p>用户自行判断：急停触发为红灯常亮，机器人语音播报"嘟嘟嘟急停触发"，手柄无法遥控机器人，抱闸解除，机器能够推动，旋起解除急停按钮，恢复为触发急停前的灯光状态</p>
+    {% else %}
+    <p>用户自行判断：急停触发为红灯，语音播放急停触发，无法推动车辆，手柄无法遥控</p>
+    {% endif %}
+    
+    <div class="button-info">
+        <h3>测试结果</h3>
+        {% if 'emergency_stop' in current_button_types %}
+        <div class="button-item">
+            <span class="button-label">急停按钮:</span>
+            <span class="button-value" id="emergency-stop-status">未检测</span>
+            <button class="btn btn-sm btn-primary" onclick="testEmergencyStop()">测试</button>
+        </div>
+        {% endif %}
+        {% if 'left_emergency_stop' in current_button_types %}
+        <div class="button-item">
+            <span class="button-label">左急停按钮:</span>
+            <span class="button-value" id="left-emergency-stop-status">未检测</span>
+            <button class="btn btn-sm btn-primary" onclick="testLeftEmergencyStop()">测试</button>
+        </div>
+        {% endif %}
+        {% if 'right_emergency_stop' in current_button_types %}
+        <div class="button-item">
+            <span class="button-label">右急停按钮:</span>
+            <span class="button-value" id="right-emergency-stop-status">未检测</span>
+            <button class="btn btn-sm btn-primary" onclick="testRightEmergencyStop()">测试</button>
+        </div>
+        {% endif %}
+        {% if 'chassis_left_stop' in current_button_types %}
+        <div class="button-item">
+            <span class="button-label">底盘左急停:</span>
+            <span class="button-value" id="chassis-left-stop-status">未检测</span>
+            <button class="btn btn-sm btn-primary" onclick="testChassisLeftStop()">测试</button>
+        </div>
+        {% endif %}
+        {% if 'chassis_right_stop' in current_button_types %}
+        <div class="button-item">
+            <span class="button-label">底盘右急停:</span>
+            <span class="button-value" id="chassis-right-stop-status">未检测</span>
+            <button class="btn btn-sm btn-primary" onclick="testChassisRightStop()">测试</button>
+        </div>
+        {% endif %}
+        {% if 'integrated_left_stop' in current_button_types %}
+        <div class="button-item">
+            <span class="button-label">上集成左急停:</span>
+            <span class="button-value" id="integrated-left-stop-status">未检测</span>
+            <button class="btn btn-sm btn-primary" onclick="testIntegratedLeftStop()">测试</button>
+        </div>
+        {% endif %}
+        {% if 'integrated_right_stop' in current_button_types %}
+        <div class="button-item">
+            <span class="button-label">上集成右急停:</span>
+            <span class="button-value" id="integrated-right-stop-status">未检测</span>
+            <button class="btn btn-sm btn-primary" onclick="testIntegratedRightStop()">测试</button>
+        </div>
+        {% endif %}
+        {% if 'unlock_brake' in current_button_types %}
+        <div class="button-item">
+            <span class="button-label">解抱闸按钮:</span>
+            <span class="button-value" id="unlock-brake-status">未检测</span>
+            <button class="btn btn-sm btn-primary" onclick="testUnlockBrake()">测试</button>
+        </div>
+        {% endif %}
+        {% if 'voice' in current_button_types %}
+        <div class="button-item">
+            <span class="button-label">语音按钮:</span>
+            <span class="button-value" id="voice-button-status">未检测</span>
+            <button class="btn btn-sm btn-primary" onclick="testVoiceButton()">测试</button>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="ui-buttons">
+        <button class="btn btn-primary" onclick="endTest('button', 'success')">测试成功</button>
+        <button class="btn btn-primary" onclick="endTest('button', 'failed')">测试失败</button>
+    </div>
+    <div class="test-time" id="test-time"></div>
+</div>
+
+<style>
+    .button-info {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #f9f9f9;
+    }
+    .button-info h3 {
+        margin-top: 0;
+        color: #555;
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+    .button-item {
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .button-item:last-child {
+        border-bottom: none;
+    }
+    .button-label {
+        font-weight: bold;
+        color: #333;
+    }
+    .button-value {
+        color: #666;
+    }
+    .test-time {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #999;
+        text-align: right;
+    }
+</style>
+
+<script>
+    function endTest(testType, result) {
+        fetch('/end_test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ test_type: testType, result: result })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTestStatus(testType, result);
+                const nextTestType = getNextTestType(testType);
+                if (nextTestType) {
+                    navigateToTest(nextTestType);
+                }
+            }
+        });
+    }
+    
+    function testButton(buttonType, statusId, buttonName) {
+        let startTime = Date.now();
+        const timeout = 30000;
+        let step = 1;
+        let errorCount = 0;
+        const maxErrorCount = 5;
+        
+        showLoading('请触发' + buttonName + '...');
+        
+        function checkButtonStatus() {
+            if (Date.now() - startTime > timeout) {
+                hideLoading();
+                alert('测试超时，请在30秒内完成操作');
+                const statusEl = document.getElementById(statusId);
+                if (statusEl) {
+                    statusEl.textContent = '失败';
+                    statusEl.style.color = 'red';
+                }
+                return;
+            }
+            
+            fetch('/test_button', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ button_type: buttonType, check_only: true })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    errorCount = 0;
+                    
+                    if (data.value === null || data.value === undefined) {
+                        setTimeout(checkButtonStatus, 200);
+                        return;
+                    }
+                    
+                    if (step === 1) {
+                        if (data.value === 1) {
+                            step = 2;
+                            showLoading('请恢复' + buttonName + '...');
+                        }
+                    } else if (step === 2) {
+                        if (data.value === 0) {
+                            hideLoading();
+                            const statusEl = document.getElementById(statusId);
+                            if (statusEl) {
+                                statusEl.textContent = '成功';
+                                statusEl.style.color = 'green';
+                            }
+                            fetch('/test_button', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ button_type: buttonType, save_result: true })
+                            });
+                            return;
+                        }
+                    }
+                    setTimeout(checkButtonStatus, 120);
+                } else {
+                    errorCount++;
+                    if (errorCount >= maxErrorCount) {
+                        hideLoading();
+                        alert('测试失败: ' + (data.error || '未知错误'));
+                    } else {
+                        setTimeout(checkButtonStatus, 500);
+                    }
+                }
+            })
+            .catch(error => {
+                errorCount++;
+                if (errorCount >= maxErrorCount) {
+                    hideLoading();
+                    console.error('请求出错:', error);
+                    alert('测试过程中出错');
+                } else {
+                    setTimeout(checkButtonStatus, 500);
+                }
+            });
+        }
+        
+        checkButtonStatus();
+    }
+    
+    function testEmergencyStop() {
+        testButton('emergency_stop', 'emergency-stop-status', '急停按钮');
+    }
+    
+    function testLeftEmergencyStop() {
+        testButton('left_emergency_stop', 'left-emergency-stop-status', '左急停按钮');
+    }
+    
+    function testRightEmergencyStop() {
+        testButton('right_emergency_stop', 'right-emergency-stop-status', '右急停按钮');
+    }
+    
+    function testVoiceButton() {
+        testButton('voice', 'voice-button-status', '语音按钮');
+    }
+    
+    function testChassisLeftStop() {
+        testButton('chassis_left_stop', 'chassis-left-stop-status', '底盘左急停');
+    }
+    
+    function testChassisRightStop() {
+        testButton('chassis_right_stop', 'chassis-right-stop-status', '底盘右急停');
+    }
+    
+    function testIntegratedLeftStop() {
+        testButton('integrated_left_stop', 'integrated-left-stop-status', '上集成左急停');
+    }
+    
+    function testIntegratedRightStop() {
+        testButton('integrated_right_stop', 'integrated-right-stop-status', '上集成右急停');
+    }
+    
+    function testUnlockBrake() {
+        testButton('unlock_brake', 'unlock-brake-status', '解抱闸按钮');
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/get_button_info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.button_info) {
+                const emergencyStopEl = document.getElementById('emergency-stop-status');
+                const leftEmergencyStopEl = document.getElementById('left-emergency-stop-status');
+                const rightEmergencyStopEl = document.getElementById('right-emergency-stop-status');
+                const voiceButtonEl = document.getElementById('voice-button-status');
+                const chassisLeftStopEl = document.getElementById('chassis-left-stop-status');
+                const chassisRightStopEl = document.getElementById('chassis-right-stop-status');
+                const integratedLeftStopEl = document.getElementById('integrated-left-stop-status');
+                const integratedRightStopEl = document.getElementById('integrated-right-stop-status');
+                const unlockBrakeEl = document.getElementById('unlock-brake-status');
+                const testTimeElement = document.getElementById('test-time');
+                
+                if (emergencyStopEl && data.button_info.emergency_stop) {
+                    const status = data.button_info.emergency_stop;
+                    emergencyStopEl.textContent = status === 'success' ? '成功' : '失败';
+                    emergencyStopEl.style.color = status === 'success' ? 'green' : 'red';
+                }
+                
+                if (leftEmergencyStopEl && data.button_info.left_emergency_stop) {
+                    const status = data.button_info.left_emergency_stop;
+                    leftEmergencyStopEl.textContent = status === 'success' ? '成功' : '失败';
+                    leftEmergencyStopEl.style.color = status === 'success' ? 'green' : 'red';
+                }
+                
+                if (rightEmergencyStopEl && data.button_info.right_emergency_stop) {
+                    const status = data.button_info.right_emergency_stop;
+                    rightEmergencyStopEl.textContent = status === 'success' ? '成功' : '失败';
+                    rightEmergencyStopEl.style.color = status === 'success' ? 'green' : 'red';
+                }
+                
+                if (voiceButtonEl && data.button_info.voice) {
+                    const status = data.button_info.voice;
+                    voiceButtonEl.textContent = status === 'success' ? '成功' : '失败';
+                    voiceButtonEl.style.color = status === 'success' ? 'green' : 'red';
+                }
+                
+                if (chassisLeftStopEl && data.button_info.chassis_left_stop) {
+                    const status = data.button_info.chassis_left_stop;
+                    chassisLeftStopEl.textContent = status === 'success' ? '成功' : '失败';
+                    chassisLeftStopEl.style.color = status === 'success' ? 'green' : 'red';
+                }
+                
+                if (chassisRightStopEl && data.button_info.chassis_right_stop) {
+                    const status = data.button_info.chassis_right_stop;
+                    chassisRightStopEl.textContent = status === 'success' ? '成功' : '失败';
+                    chassisRightStopEl.style.color = status === 'success' ? 'green' : 'red';
+                }
+                
+                if (integratedLeftStopEl && data.button_info.integrated_left_stop) {
+                    const status = data.button_info.integrated_left_stop;
+                    integratedLeftStopEl.textContent = status === 'success' ? '成功' : '失败';
+                    integratedLeftStopEl.style.color = status === 'success' ? 'green' : 'red';
+                }
+                
+                if (integratedRightStopEl && data.button_info.integrated_right_stop) {
+                    const status = data.button_info.integrated_right_stop;
+                    integratedRightStopEl.textContent = status === 'success' ? '成功' : '失败';
+                    integratedRightStopEl.style.color = status === 'success' ? 'green' : 'red';
+                }
+                
+                if (unlockBrakeEl && data.button_info.unlock_brake) {
+                    const status = data.button_info.unlock_brake;
+                    unlockBrakeEl.textContent = status === 'success' ? '成功' : '失败';
+                    unlockBrakeEl.style.color = status === 'success' ? 'green' : 'red';
+                }
+                
+                if (testTimeElement && data.button_info.time) {
+                    testTimeElement.textContent = '测试时间: ' + data.button_info.time;
+                }
+            }
+        })
+        .catch(error => {
+            console.log('获取按钮测试结果失败:', error);
+        });
+        
+        fetch('/get_test_status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.test_status) {
+                if (typeof updateAllTestStatus === 'function') {
+                    updateAllTestStatus(data.test_status);
+                }
+                if (data.test_times && data.test_times.button) {
+                    const testTimeElement = document.getElementById('test-time');
+                    if (testTimeElement) {
+                        testTimeElement.textContent = '测试时间: ' + data.test_times.button;
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.log('获取测试状态失败:', error);
+        });
+    });
+</script>

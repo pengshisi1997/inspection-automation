@@ -1,0 +1,648 @@
+<div class="test-ui">
+    <h2 style="display: flex; align-items: center; justify-content: center;">
+        人工测试
+        <span style="margin-left: 15px;">
+            <button id="start-test-btn" class="btn btn-primary" onclick="startTestMode()" style="padding: 4px 16px; font-size: 14px;">开始测试</button>
+            <button id="cancel-test-btn" class="btn btn-secondary" onclick="cancelTestMode()" style="display: none; margin-left: 10px; padding: 4px 16px; font-size: 14px;">取消测试</button>
+        </span>
+    </h2>
+    <div id="manual-test-nav" style="display: none; margin-bottom: 20px; text-align: center;">
+        <button id="prev-btn" class="btn btn-secondary" onclick="prevTestItem()" disabled style="margin-right: 10px; padding: 8px 20px;">上一项</button>
+        <span id="test-progress" style="margin: 0 15px; font-size: 16px; font-weight: bold;">1 / 1</span>
+        <button id="next-btn" class="btn btn-secondary" onclick="nextTestItem()" disabled style="margin-left: 10px; padding: 8px 20px;">下一项</button>
+    </div>
+    <div id="manual-test-items-container" style="max-width: 800px; margin: 0 auto; text-align: left;">
+        <!-- 测试项将通过JS动态生成 -->
+        <div class="loading-spinner" style="margin: 50px auto;"></div>
+    </div>
+    <div class="ui-buttons">
+        <button class="btn btn-primary" onclick="saveManualTestResult()">完成测试</button>
+    </div>
+</div>
+
+<!-- 图片查看模态框 -->
+<div id="imageModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.9);">
+    <div style="position: relative; margin: 15% auto; padding: 20px; width: 80%; max-width: 800px;">
+        <span id="closeModal" style="position: absolute; top: 10px; right: 25px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer;">&times;</span>
+        <div style="text-align: center;">
+            <img id="modalImage" style="max-width: 100%; max-height: 80vh;" src="" alt="教程图片">
+        </div>
+    </div>
+</div>
+
+<!-- 备注编辑模态框 -->
+<div id="noteModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+    <div style="position: relative; margin: 15% auto; padding: 20px; width: 80%; max-width: 500px; background-color: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+        <span id="closeNoteModal" style="position: absolute; top: 10px; right: 20px; color: #666; font-size: 24px; font-weight: bold; cursor: pointer;">&times;</span>
+        <h3 style="margin-top: 0; margin-bottom: 20px; color: #333;">修改备注</h3>
+        <input type="hidden" id="noteItemName">
+        <textarea id="noteContent" style="width: 100%; height: 120px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; resize: vertical;" placeholder="请输入备注内容"></textarea>
+        <div style="margin-top: 20px; text-align: right;">
+            <button class="btn btn-secondary" onclick="closeNoteModal()" style="margin-right: 10px;">取消</button>
+            <button class="btn btn-primary" onclick="saveNote()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentManualItems = [];
+    let currentConfirmingItem = null;
+    let isTestMode = false;
+    let currentTestIndex = 0;
+
+    // 页面加载时获取人工测试配置和状态
+    (function() {
+        fetch('/get_manual_info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentManualItems = data.items;
+                renderManualTestItems(data.items, data.task_status, data.task_time || {}, data.task_notes || {});
+            } else {
+                document.getElementById('manual-test-items-container').innerHTML = '<p style="text-align: center; color: red;">加载测试项失败: ' + (data.error || '未知错误') + '</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('manual-test-items-container').innerHTML = '<p style="text-align: center; color: red;">加载测试项失败</p>';
+        });
+        
+        // 添加模态框关闭事件监听器
+        document.getElementById('closeModal').addEventListener('click', closeImageModal);
+        document.getElementById('closeNoteModal').addEventListener('click', closeNoteModal);
+        
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('imageModal');
+            if (event.target === modal) {
+                closeImageModal();
+            }
+            const noteModal = document.getElementById('noteModal');
+            if (event.target === noteModal) {
+                closeNoteModal();
+            }
+        });
+    })();
+
+    function manualTimeElementId(itemName) {
+        return 'manual-item-time-' + encodeURIComponent(itemName).replace(/%/g, '_');
+    }
+
+    function updateManualItemTime(itemName, timeStr) {
+        const el = document.getElementById(manualTimeElementId(itemName));
+        if (!el) return;
+        el.textContent = timeStr || '';
+    }
+
+    function manualNoteElementId(itemName) {
+        return 'manual-item-note-' + encodeURIComponent(itemName).replace(/%/g, '_');
+    }
+
+    function renderManualTestItems(items, status, timeMap, noteMap) {
+        const container = document.getElementById('manual-test-items-container');
+        container.innerHTML = '';
+
+        if (!items || items.length === 0) {
+            container.innerHTML = '<p style="text-align: center;">没有配置人工测试项</p>';
+            return;
+        }
+
+        const itemsToRender = isTestMode ? [items[currentTestIndex]] : items;
+        
+        itemsToRender.forEach((item, idx) => {
+            const actualIndex = isTestMode ? currentTestIndex : idx;
+            const itemName = item.name || item;
+            const itemDesc = item.description || '';
+            const itemExpected = item.expected_result || '';
+            const itemConfirm = item.confirm_content || '';
+            const itemStatus = status[itemName] || null;
+            const itemTime = (timeMap && timeMap[itemName]) ? timeMap[itemName] : '';
+            const itemNote = (noteMap && noteMap[itemName]) ? noteMap[itemName] : '';
+            const itemImage = item.image || null;
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.style.cssText = 'margin-bottom: 20px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.style.cssText = 'margin-bottom: 15px;';
+            
+            // Title with dot
+            const titleContainer = document.createElement('div');
+            titleContainer.style.cssText = 'display: flex; align-items: center; margin-bottom: 12px;';
+            
+            const dot = document.createElement('span');
+            dot.style.cssText = 'display: inline-block; width: 8px; height: 8px; background-color: #007bff; border-radius: 50%; margin-right: 12px; flex-shrink: 0;';
+            
+            const title = document.createElement('h3');
+            title.style.cssText = 'margin: 0; color: #2c3e50; font-size: 18px; font-weight: 600; line-height: 1.2;';
+            title.textContent = itemName;
+            
+            titleContainer.appendChild(dot);
+            titleContainer.appendChild(title);
+            contentDiv.appendChild(titleContainer);
+            
+            if (itemDesc) {
+                const descContainer = document.createElement('div');
+                descContainer.style.cssText = 'margin-left: 20px; padding: 10px 15px; background-color: #e7f3ff; border-radius: 6px; border-left: 3px solid #007bff;';
+                
+                const descLabel = document.createElement('div');
+                descLabel.style.cssText = 'font-size: 12px; color: #0066cc; margin-bottom: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;';
+                descLabel.textContent = '测试步骤';
+                
+                const desc = document.createElement('div');
+                desc.style.cssText = 'margin: 0; color: #555; font-size: 13px; line-height: 1.6; white-space: pre-wrap;';
+                desc.textContent = itemDesc;
+                
+                descContainer.appendChild(descLabel);
+                descContainer.appendChild(desc);
+                contentDiv.appendChild(descContainer);
+            }
+            
+            if (itemExpected) {
+                const expectedContainer = document.createElement('div');
+                expectedContainer.style.cssText = 'margin-left: 20px; padding: 10px 15px; background-color: #f8f9fa; border-radius: 6px; border-left: 3px solid #e9ecef; margin-top: 10px;';
+                
+                const expectedLabel = document.createElement('div');
+                expectedLabel.style.cssText = 'font-size: 12px; color: #adb5bd; margin-bottom: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;';
+                expectedLabel.textContent = '预期结果';
+                
+                const expected = document.createElement('div');
+                expected.style.cssText = 'margin: 0; color: #555; font-size: 13px; line-height: 1.6; white-space: pre-wrap;';
+                expected.textContent = itemExpected;
+                
+                expectedContainer.appendChild(expectedLabel);
+                expectedContainer.appendChild(expected);
+                contentDiv.appendChild(expectedContainer);
+            }
+            
+            // Add image button if image exists
+            if (itemImage) {
+                const imageButton = document.createElement('button');
+                imageButton.style.cssText = 'margin-left: 20px; margin-top: 10px; padding: 6px 12px; background-color: #6c757d; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;';
+                imageButton.textContent = '查看教程图片';
+                imageButton.onclick = function() {
+                    openImageModal(itemImage);
+                };
+                contentDiv.appendChild(imageButton);
+            }
+            
+            const optionsRowDiv = document.createElement('div');
+            optionsRowDiv.style.cssText = 'display: flex; align-items: center; gap: 15px; margin-top: 15px; padding-left: 20px; flex-wrap: wrap;';
+            
+            // Success Option
+            const successLabel = createOption(itemName, 'success', '成功', '#28a745', itemStatus === 'success');
+            
+            // Failed Option
+            const failedLabel = createOption(itemName, 'failed', '失败', '#dc3545', itemStatus === 'failed');
+            
+            // Note button
+            const noteButton = document.createElement('button');
+            noteButton.style.cssText = 'margin-left: 10px; padding: 2px 4px; background-color: #6c757d; color: white; border: none; border-radius: 3px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center;';
+            noteButton.textContent = '备注';
+            noteButton.onclick = function() {
+                openNoteModal(itemName, itemNote);
+            };
+            
+            // Note display
+            const noteSpan = document.createElement('span');
+            noteSpan.id = manualNoteElementId(itemName);
+            noteSpan.style.cssText = 'margin-left: 0px; font-size: 12px; color: #6c757d; flex: 1; min-width: 200px; display: inline-flex; align-items: center;';
+            noteSpan.textContent = itemNote || '无';
+            
+            const timeSpan = document.createElement('span');
+            timeSpan.id = manualTimeElementId(itemName);
+            timeSpan.style.cssText = 'font-size: 12px; color: #6c757d; white-space: nowrap; text-align: right; margin-left: auto;';
+            timeSpan.textContent = itemTime || '';
+            
+            optionsRowDiv.appendChild(successLabel);
+            optionsRowDiv.appendChild(failedLabel);
+            optionsRowDiv.appendChild(noteButton);
+            optionsRowDiv.appendChild(noteSpan);
+            optionsRowDiv.appendChild(timeSpan);
+            
+            itemDiv.appendChild(contentDiv);
+            itemDiv.appendChild(optionsRowDiv);
+            container.appendChild(itemDiv);
+        });
+
+        // 重新绑定事件监听器
+        bindRadioEvents();
+    }
+
+    // 打开图片模态框
+    function openImageModal(imageName) {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        modalImage.src = `/image/${imageName}`;
+        modal.style.display = 'block';
+    }
+
+    // 关闭图片模态框
+    function closeImageModal() {
+        document.getElementById('imageModal').style.display = 'none';
+    }
+
+    // 打开备注模态框
+    function openNoteModal(itemName, currentNote) {
+        document.getElementById('noteItemName').value = itemName;
+        document.getElementById('noteContent').value = currentNote || '';
+        document.getElementById('noteModal').style.display = 'block';
+    }
+
+    // 关闭备注模态框
+    function closeNoteModal() {
+        document.getElementById('noteModal').style.display = 'none';
+    }
+
+    // 保存备注
+    function saveNote() {
+        const itemName = document.getElementById('noteItemName').value;
+        const noteContent = document.getElementById('noteContent').value.trim();
+        
+        if (!itemName) {
+            showAutoHideMessage('测试项名称为空');
+            return;
+        }
+        
+        const payload = {
+            test_type: 'manual',
+            data: {}
+        };
+        payload.data[itemName] = {
+            note: noteContent
+        };
+        
+        fetch('/end_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 更新页面上的备注显示
+                const noteSpan = document.getElementById(manualNoteElementId(itemName));
+                if (noteSpan) {
+                    noteSpan.textContent = noteContent || '无';
+                }
+                showAutoHideMessage('备注保存成功');
+                closeNoteModal();
+            } else {
+                showAutoHideMessage('保存备注失败');
+            }
+        })
+        .catch(() => {
+            showAutoHideMessage('保存备注失败');
+        });
+    }
+
+    function createOption(name, value, text, color, isChecked) {
+        const label = document.createElement('label');
+        label.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 16px; border-radius: 4px; transition: all 0.3s;';
+        
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = name;
+        input.value = value;
+        input.style.accentColor = color;
+        if (isChecked) {
+            input.checked = true;
+            // Apply checked style immediately
+            label.style.backgroundColor = color;
+            label.style.color = 'white';
+        }
+        
+        const span = document.createElement('span');
+        span.style.fontSize = '14px';
+        span.textContent = text;
+        
+        label.appendChild(input);
+        label.appendChild(span);
+        
+        return label;
+    }
+
+    function bindRadioEvents() {
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const label = this.closest('label');
+                const name = this.name;
+                
+                if (this.value === 'success') {
+                    const item = currentManualItems.find(i => (i.name || i) === name);
+                    const confirmContent = item ? item.confirm_content : null;
+                    
+                    if (confirmContent && confirmContent.trim()) {
+                        const confirmModal = document.createElement('div');
+                        confirmModal.style.cssText = `
+                            position: fixed;
+                            z-index: 10000;
+                            left: 0;
+                            top: 0;
+                            width: 100%;
+                            height: 100%;
+                            background-color: rgba(0,0,0,0.5);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        `;
+                        
+                        const modalContent = document.createElement('div');
+                        modalContent.style.cssText = `
+                            background-color: white;
+                            padding: 30px;
+                            border-radius: 8px;
+                            max-width: 400px;
+                            width: 90%;
+                            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                        `;
+                        
+                        const title = document.createElement('h3');
+                        title.style.cssText = 'margin-top: 0; margin-bottom: 15px; color: #333; font-size: 18px;';
+                        title.textContent = '确认测试通过';
+                        
+                        const content = document.createElement('p');
+                        content.style.cssText = 'color: #666; line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap;';
+                        content.textContent = confirmContent;
+                        
+                        const buttonContainer = document.createElement('div');
+                        buttonContainer.style.cssText = 'display: flex; justify-content: flex-end; gap: 10px;';
+                        
+                        const cancelBtn = document.createElement('button');
+                        cancelBtn.style.cssText = `
+                            padding: 8px 20px;
+                            background-color: #6c757d;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 14px;
+                        `;
+                        cancelBtn.textContent = '取消';
+                        cancelBtn.onclick = function() {
+                            document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+                                r.checked = false;
+                                const l = r.closest('label');
+                                l.style.backgroundColor = '';
+                                l.style.color = '';
+                            });
+                            document.body.removeChild(confirmModal);
+                        };
+                        
+                        const confirmBtn = document.createElement('button');
+                        confirmBtn.style.cssText = `
+                            padding: 8px 20px;
+                            background-color: #28a745;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 14px;
+                        `;
+                        confirmBtn.textContent = '确认通过';
+                        confirmBtn.onclick = function() {
+                            document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+                                const l = r.closest('label');
+                                l.style.backgroundColor = '';
+                                l.style.color = '';
+                            });
+                            label.style.backgroundColor = '#28a745';
+                            label.style.color = 'white';
+                            saveManualTestItemResult(name, 'success');
+                            document.body.removeChild(confirmModal);
+                            goToNextInTestMode();
+                        };
+                        
+                        buttonContainer.appendChild(cancelBtn);
+                        buttonContainer.appendChild(confirmBtn);
+                        modalContent.appendChild(title);
+                        modalContent.appendChild(content);
+                        modalContent.appendChild(buttonContainer);
+                        confirmModal.appendChild(modalContent);
+                        document.body.appendChild(confirmModal);
+                        
+                        return;
+                    } else {
+                        document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+                            const l = r.closest('label');
+                            l.style.backgroundColor = '';
+                            l.style.color = '';
+                        });
+                        label.style.backgroundColor = '#28a745';
+                        label.style.color = 'white';
+                        saveManualTestItemResult(name, 'success');
+                    }
+                } else if (this.value === 'failed') {
+                    document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+                        const l = r.closest('label');
+                        l.style.backgroundColor = '';
+                        l.style.color = '';
+                    });
+                    label.style.backgroundColor = '#dc3545';
+                    label.style.color = 'white';
+                    saveManualTestItemResult(name, 'failed');
+                    goToNextInTestMode();
+                }
+            });
+        });
+    }
+
+    // 导航到下一个测试项
+    function navigateToNextTest() {
+        const nextTest = getNextTestType('manual');
+        if (nextTest) {
+            navigateToTest(nextTest);
+        }
+    }
+
+    // 开始测试模式
+    function startTestMode() {
+        isTestMode = true;
+        currentTestIndex = 0;
+        
+        document.getElementById('start-test-btn').style.display = 'none';
+        document.getElementById('cancel-test-btn').style.display = 'inline-block';
+        document.getElementById('manual-test-nav').style.display = 'block';
+        
+        renderManualTestItems(currentManualItems, {}, {}, {});
+        updateNavButtons();
+    }
+
+    // 取消测试模式
+    function cancelTestMode() {
+        isTestMode = false;
+        
+        document.getElementById('start-test-btn').style.display = 'inline-block';
+        document.getElementById('cancel-test-btn').style.display = 'none';
+        document.getElementById('manual-test-nav').style.display = 'none';
+        
+        // 重新加载数据并渲染所有测试项
+        fetch('/get_manual_info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderManualTestItems(data.items, data.task_status, data.task_time || {}, data.task_notes || {});
+            }
+        });
+    }
+
+    // 更新导航按钮状态
+    function updateNavButtons() {
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const progress = document.getElementById('test-progress');
+        
+        prevBtn.disabled = currentTestIndex === 0;
+        nextBtn.disabled = currentTestIndex >= currentManualItems.length - 1;
+        progress.textContent = `${currentTestIndex + 1} / ${currentManualItems.length}`;
+    }
+
+    // 上一项
+    function prevTestItem() {
+        if (currentTestIndex > 0) {
+            currentTestIndex--;
+            renderManualTestItems(currentManualItems, {}, {}, {});
+            updateNavButtons();
+        }
+    }
+
+    // 下一项
+    function nextTestItem() {
+        if (currentTestIndex < currentManualItems.length - 1) {
+            currentTestIndex++;
+            renderManualTestItems(currentManualItems, {}, {}, {});
+            updateNavButtons();
+        }
+    }
+
+    // 在测试模式下跳转到下一项
+    function goToNextInTestMode() {
+        if (isTestMode && currentTestIndex < currentManualItems.length - 1) {
+            currentTestIndex++;
+            renderManualTestItems(currentManualItems, {}, {}, {});
+            updateNavButtons();
+        }
+    }
+
+    // 显示自动消失的提示框
+    function showAutoHideMessage(message) {
+        // 创建提示框元素
+        const messageBox = document.createElement('div');
+        messageBox.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #007bff;
+            color: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 10000;
+            font-size: 16px;
+            font-weight: 500;
+            transition: opacity 0.5s ease;
+            text-align: center;
+            min-width: 200px;
+        `;
+        messageBox.textContent = message;
+        
+        // 添加到页面
+        document.body.appendChild(messageBox);
+        
+        // 1秒后开始淡出
+        setTimeout(() => {
+            messageBox.style.opacity = '0';
+            // 淡出后移除元素
+            setTimeout(() => {
+                document.body.removeChild(messageBox);
+            }, 500);
+        }, 1000);
+    }
+
+    // 保存人工测试结果
+    function saveManualTestItemResult(itemName, value) {
+        const payload = {
+            test_type: 'manual',
+            data: {}
+        };
+        payload.data[itemName] = value;
+        
+        fetch('/end_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data || !data.success) {
+                showAutoHideMessage('保存测试结果失败');
+                return;
+            }
+            const updated = data.updated_items && data.updated_items[itemName] ? data.updated_items[itemName] : null;
+            if (updated && updated.time) {
+                updateManualItemTime(itemName, updated.time);
+            } else if (data.manual_time) {
+                updateManualItemTime(itemName, data.manual_time);
+            }
+        })
+        .catch(() => {
+            showAutoHideMessage('保存测试结果失败');
+        });
+    }
+
+    function saveManualTestResult() {
+        if (currentManualItems.length === 0) {
+            showAutoHideMessage('没有测试项可保存');
+            return;
+        }
+
+        const testResults = {};
+        let completedCount = 0;
+        
+        // 收集已完成的测试项结果
+        currentManualItems.forEach(test => {
+            const testName = test.name || test;
+            const radio = document.querySelector(`input[name="${testName}"]:checked`);
+            if (radio) {
+                testResults[testName] = radio.value;
+                completedCount++;
+            }
+        });
+        
+        if (completedCount !== currentManualItems.length) {
+            showAutoHideMessage('请先完成所有测试项');
+            return;
+        }
+        
+        const overallResult = Object.values(testResults).every(result => result === 'success') ? 'success' : 'failed';
+        const requestData = {
+            test_type: 'manual',
+            result: overallResult
+        };
+        
+        // 保存测试结果
+        fetch('/end_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 更新测试状态
+                const status = data.test_status && data.test_status.manual ? data.test_status.manual : 'completed';
+                updateTestStatus('manual', status);
+                showAutoHideMessage('测试结果保存成功');
+            } else {
+                showAutoHideMessage('保存测试结果失败');
+            }
+        });
+    }
+</script>

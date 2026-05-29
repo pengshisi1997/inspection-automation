@@ -1,0 +1,189 @@
+{
+  "robot_info": {
+    "sn": "SNH202510031",
+    "tester": "马天宇",
+    "model": "MS",
+    "ip": "192.168.16.63"
+  },
+  "version": {
+    "pilot_version": "release/v3.8.0_xjyw_v1.5.21_20260313",
+    "compass_version": "YOUICompassSetup-4.7.4-xjyw-V4.2.0-20260416.zip",
+    "rcc_base_version": "2.01",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "result": "success",
+    "time": "2026-04-21 09:37:26"
+  },
+  "sensor": {
+    "result": "success",
+    "data": {
+      "ks114_sensor": [
+        5657,
+        5657,
+        892,
+        828
+      ],
+      "imu_data": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "w": 1.0
+      },
+      "encoder": [
+        24,
+        11
+      ],
+      "odom": {
+        "x": -1.33621034976e-05,
+        "y": 5.23487829548e-10,
+        "z": 0.0
+      },
+      "cpu_hz": [
+        3445.755,
+        3444.888,
+        3449.032,
+        3439.817
+      ],
+      "scan_1": "大量数据"
+    },
+    "time": "2026-04-21 09:30:58"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "0.651 ms",
+      "192.168.2.63": "0.774 ms",
+      "192.168.2.250": "0.418 ms",
+      "192.168.0.100": "0.017 ms",
+      "192.168.2.2": "0.013 ms",
+      "192.168.0.100:8081": "0.100 ms"
+    },
+    "time": "2026-04-21 09:05:21"
+  },
+  "button": {
+    "data": {
+      "emergency_stop": "success"
+    },
+    "time": "2026-03-26 09:23:22",
+    "result": "success"
+  },
+  "anti_collision": {
+    "data": {
+      "front": "success",
+      "back": "success"
+    },
+    "newton": {
+      "front": 30,
+      "back": 31
+    },
+    "time": "2026-03-26 09:25:49",
+    "result": "success"
+  },
+  "speaker": {
+    "result": "success",
+    "time": "2026-03-26 09:25:59"
+  },
+  "light": {
+    "data": {
+      "red": "success",
+      "blue": "success",
+      "green": "success"
+    },
+    "time": "2026-03-26 09:26:42",
+    "result": "success"
+  },
+  "dynamic": {
+    "result": "success",
+    "data": {
+      "直线": "success",
+      "切区": "success",
+      "曲线": "success",
+      "沟壑": "success",
+      "云台": "success",
+      "time": "2026-03-26 09:41:21"
+    },
+    "time": "2026-03-26 09:41:57"
+  },
+  "manual": {
+    "data": {
+      "外观检查": {
+        "result": "success",
+        "time": "2026-04-21 09:05:50"
+      },
+      "雷达高度": {
+        "result": "success",
+        "time": "2026-03-26 09:53:13"
+      },
+      "铭牌信息检查": {
+        "result": "success",
+        "time": "2026-04-18 15:20:53",
+        "note": ""
+      },
+      "ECN变更检查": {
+        "result": "success",
+        "time": "2026-03-26 09:59:16"
+      },
+      "外部调试网口检查": {
+        "result": "success",
+        "time": "2026-03-26 09:59:25"
+      },
+      "异响检查": {
+        "result": "success",
+        "time": "2026-03-26 09:59:32"
+      },
+      "ESD防静电": {
+        "result": "success",
+        "time": "2026-03-26 10:04:48"
+      },
+      "超声波距离": {
+        "result": "success",
+        "time": "2026-03-26 10:07:18"
+      },
+      "手动遥控声光": {
+        "result": "success",
+        "time": "2026-03-26 10:34:10"
+      },
+      "10米直线误差": {
+        "result": "success",
+        "time": "2026-03-26 10:34:13"
+      },
+      "雷达避障": {
+        "result": "success",
+        "time": "2026-03-26 10:34:31"
+      },
+      "超声波避障": {
+        "result": "success",
+        "time": "2026-03-26 10:34:34"
+      },
+      "防撞条避障": {
+        "result": "success",
+        "time": "2026-03-26 10:35:07"
+      },
+      "节点开启和关闭检查": {
+        "result": "success",
+        "time": "2026-03-26 10:39:30"
+      },
+      "手动建图": {
+        "result": "success",
+        "time": "2026-03-26 15:47:32"
+      },
+      "手动充电": {
+        "result": "success",
+        "time": "2026-04-18 15:21:01"
+      },
+      "精度测试": {
+        "result": "success",
+        "time": "2026-04-18 15:21:04"
+      },
+      "自动充电": {
+        "result": "success",
+        "time": "2026-04-18 15:21:06"
+      },
+      "老化数据": {
+        "result": "success",
+        "time": "2026-04-18 15:21:07"
+      }
+    },
+    "time": "2026-04-21 09:05:50",
+    "result": "success"
+  }
+}

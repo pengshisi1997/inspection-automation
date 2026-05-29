@@ -1,0 +1,587 @@
+<div class="test-ui">
+    <h2>集成测试</h2>
+    <p>集成测试将依次执行MOS云台相关任务</p>
+    
+    
+    <!-- 任务状态显示区域 -->
+    <div class="task-info">
+        <h3>任务状态</h3>
+        <div class="task-item">
+            <span class="task-label">light_photo (可见光拍照):</span>
+            <div class="task-status-container">
+                <span class="task-value" id="task-light_photo">未测试</span>
+                <span class="task-loading" id="loading-light_photo"></span>
+                <button class="btn btn-primary btn-small" onclick="viewIntegratedResult('light_photo')">查看结果</button>
+                <button class="btn btn-primary btn-small" onclick="testSingleTask('light_photo')">单独测试</button>
+            </div>
+        </div>
+        <div class="task-item">
+            <span class="task-label">light_video (可见光录像):</span>
+            <div class="task-status-container">
+                <span class="task-value" id="task-light_video">未测试</span>
+                <span class="task-loading" id="loading-light_video"></span>
+                <button class="btn btn-primary btn-small" onclick="viewIntegratedResult('light_video')">查看结果</button>
+                <button class="btn btn-primary btn-small" onclick="testSingleTask('light_video')">单独测试</button>
+            </div>
+        </div>
+        <div class="task-item">
+            <span class="task-label">thermal_photo (热成像拍照):</span>
+            <div class="task-status-container">
+                <span class="task-value" id="task-thermal_photo">未测试</span>
+                <span class="task-loading" id="loading-thermal_photo"></span>
+                <button class="btn btn-primary btn-small" onclick="viewIntegratedResult('thermal_photo')">查看结果</button>
+                <button class="btn btn-primary btn-small" onclick="testSingleTask('thermal_photo')">单独测试</button>
+            </div>
+        </div>
+        <div class="task-item">
+            <span class="task-label">thermal_video (热成像录像):</span>
+            <div class="task-status-container">
+                <span class="task-value" id="task-thermal_video">未测试</span>
+                <span class="task-loading" id="loading-thermal_video"></span>
+                <button class="btn btn-primary btn-small" onclick="viewIntegratedResult('thermal_video')">查看结果</button>
+                <button class="btn btn-primary btn-small" onclick="testSingleTask('thermal_video')">单独测试</button>
+            </div>
+        </div>
+        <div class="task-item">
+            <span class="task-label">thermal_Temperature (测温任务):</span>
+            <div class="task-status-container">
+                <span class="task-value" id="task-thermal_Temperature">未测试</span>
+                <span class="task-loading" id="loading-thermal_Temperature"></span>
+                <button class="btn btn-primary btn-small" onclick="viewIntegratedResult('thermal_Temperature')">查看结果</button>
+                <button class="btn btn-primary btn-small" onclick="testSingleTask('thermal_Temperature')">单独测试</button>
+            </div>
+        </div>
+        <div class="task-item">
+            <span class="task-label">light_PTZ (云台动作):</span>
+            <div class="task-status-container">
+                <span class="task-value" id="task-light_PTZ">未测试</span>
+                <span class="task-loading" id="loading-light_PTZ"></span>
+                <button class="btn btn-primary btn-small" onclick="testSingleTask('light_PTZ')">单独测试</button>
+            </div>
+        </div>
+        <div class="task-item">
+            <span class="task-label">light_point (云台移动变倍至预置点10):</span>
+            <div class="task-status-container">
+                <span class="task-value" id="task-light_point">未测试</span>
+                <span class="task-loading" id="loading-light_point"></span>
+                <button class="btn btn-primary btn-small" onclick="testSingleTask('light_point')">单独测试</button>
+            </div>
+        </div>
+        <div class="task-item">
+            <span class="task-label">thermal_point (云台移动变倍至预置点11):</span>
+            <div class="task-status-container">
+                <span class="task-value" id="task-thermal_point">未测试</span>
+                <span class="task-loading" id="loading-thermal_point"></span>
+                <button class="btn btn-primary btn-small" onclick="testSingleTask('thermal_point')">单独测试</button>
+            </div>
+        </div>
+        <div class="task-item">
+            <span class="task-label">Manual_focusing (云台变成手动聚焦模式):</span>
+            <div class="task-status-container">
+                <span class="task-value" id="task-Manual_focusing">未测试</span>
+                <span class="task-loading" id="loading-Manual_focusing"></span>
+                <button class="btn btn-primary btn-small" onclick="testSingleTask('Manual_focusing')">单独测试</button>
+            </div>
+        </div>
+        <div class="task-item">
+            <span class="task-label">Auto_focusing (云台变成自动聚焦模式):</span>
+            <div class="task-status-container">
+                <span class="task-value" id="task-Auto_focusing">未测试</span>
+                <span class="task-loading" id="loading-Auto_focusing"></span>
+                <button class="btn btn-primary btn-small" onclick="testSingleTask('Auto_focusing')">单独测试</button>
+            </div>
+        </div>
+
+    </div>
+    
+    <div class="ui-buttons">
+        <button class="btn btn-primary" onclick="startTest('integrated')">开始测试</button>
+        <button class="btn btn-primary" onclick="endTest('integrated', 'success')">测试成功</button>
+        <button class="btn btn-primary" onclick="endTest('integrated', 'failed')">测试失败</button>
+    </div>
+    <div class="step-error" id="step-error"></div>
+    <div class="test-time" id="test-time"></div>
+</div>
+
+<!-- 图片/视频查看模态框 -->
+<div id="integratedModal" class="image-modal">
+    <span class="close-modal" onclick="closeIntegratedModal()">&times;</span>
+    <div class="modal-body" style="display: flex; flex-direction: column; gap: 20px; padding: 20px;">
+        <h3 style="color: white; text-align: center; margin-bottom: 10px;" id="integratedModalTitle">查看结果</h3>
+        <div id="integratedModalContent" style="display: flex; justify-content: center;"></div>
+    </div>
+    <div id="caption"></div>
+</div>
+
+<style>
+    .task-info {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #f9f9f9;
+    }
+    .task-info h3 {
+        margin-top: 0;
+        color: #555;
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+    .task-item {
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .task-item:last-child {
+        border-bottom: none;
+    }
+    .task-label {
+        font-weight: bold;
+        color: #333;
+    }
+    .task-status-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .task-value {
+        color: #666;
+    }
+    .task-loading {
+        width: 16px;
+        height: 16px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        display: none;
+    }
+    .task-loading.active {
+        display: inline-block;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .test-time {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #999;
+        text-align: right;
+    }
+    .step-error {
+        margin-top: 10px;
+        color: #d93025;
+        font-size: 14px;
+        min-height: 20px;
+        font-weight: bold;
+    }
+    .btn-small {
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+    .image-modal {
+        display: none; 
+        position: fixed; 
+        z-index: 10001; 
+        padding-top: 50px; 
+        left: 0;
+        top: 0;
+        width: 100%; 
+        height: 100%; 
+        overflow: auto; 
+        background-color: rgba(0,0,0,0.9); 
+    }
+    .close-modal {
+        position: absolute;
+        top: 15px;
+        right: 35px;
+        color: #f1f1f1;
+        font-size: 40px;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    .close-modal:hover,
+    .close-modal:focus {
+        color: #bbb;
+        text-decoration: none;
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    // 存储当前测试状态，用于显示实时进度
+    let currentTestProgress = {
+        'light_photo': 'pending',
+        'light_video': 'pending',
+        'thermal_photo': 'pending',
+        'thermal_video': 'pending',
+        'thermal_Temperature': 'pending',
+        'light_PTZ': 'pending',
+        'light_point': 'pending',
+        'thermal_point': 'pending',
+        'Manual_focusing': 'pending',
+        'Auto_focusing': 'pending'
+    };
+    
+    // 控制是否暂停刷新任务状态
+    let isRefreshPaused = false;
+    let hasShownIntegratedError = false;
+
+    // 任务标题映射
+    const taskTitleMap = {
+        'light_photo': '可见光拍照',
+        'light_video': '可见光录像',
+        'thermal_photo': '热成像拍照',
+        'thermal_video': '热成像录像',
+        'thermal_Temperature': '测温任务'
+    };
+
+    function updateIntegratedError(errorText) {
+        const errorEl = document.getElementById('step-error');
+        if (!errorEl) {
+            return;
+        }
+        if (errorText) {
+            errorEl.textContent = `错误信息: ${errorText}`;
+            if (!hasShownIntegratedError) {
+                hasShownIntegratedError = true;
+                alert(`集成测试失败: ${errorText}`);
+            }
+        } else {
+            errorEl.textContent = '';
+            hasShownIntegratedError = false;
+        }
+    }
+
+    function viewIntegratedResult(taskType) {
+        const modal = document.getElementById('integratedModal');
+        const titleEl = document.getElementById('integratedModalTitle');
+        const contentEl = document.getElementById('integratedModalContent');
+        
+        modal.style.display = "block";
+        titleEl.textContent = taskTitleMap[taskType] || '查看结果';
+        contentEl.innerHTML = '';
+        
+        // 添加时间戳防止缓存
+        const timestamp = new Date().getTime();
+        
+        if (taskType === 'thermal_Temperature') {
+            // 温度任务：显示温度数据
+            contentEl.innerHTML = '<p style="color: white; text-align: center;">正在加载温度数据...</p>';
+            
+            fetch(`/get_temperature_data?t=${timestamp}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    contentEl.innerHTML = `
+                        <div style="text-align: center; color: white; padding: 20px;">
+                            <h3 style="margin-bottom: 30px; font-size: 24px;">测温结果</h3>
+                            <div style="display: flex; justify-content: center; gap: 60px; margin-bottom: 30px;">
+                                <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); padding: 30px 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(238, 90, 36, 0.4);">
+                                    <p style="margin: 0; font-size: 14px; opacity: 0.9; margin-bottom: 10px;">最高温度</p>
+                                    <p style="margin: 0; font-size: 48px; font-weight: bold;">${data.data.max_temp}°C</p>
+                                </div>
+                                <div style="background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); padding: 30px 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(9, 132, 227, 0.4);">
+                                    <p style="margin: 0; font-size: 14px; opacity: 0.9; margin-bottom: 10px;">最低温度</p>
+                                    <p style="margin: 0; font-size: 48px; font-weight: bold;">${data.data.min_temp}°C</p>
+                                </div>
+                            </div>
+                            <p style="font-size: 14px; opacity: 0.7;">数据来源: ${data.file_name || '未知'}</p>
+                        </div>
+                    `;
+                } else {
+                    contentEl.innerHTML = `
+                        <div style="text-align: center; color: white;">
+                            <p style="margin-bottom: 20px; font-size: 18px;">${data.error || '暂无温度数据'}</p>
+                            <p style="font-size: 14px; opacity: 0.8;">请先执行测温任务</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('获取温度数据失败:', error);
+                contentEl.innerHTML = '<p style="color: white; text-align: center;">获取温度数据失败</p>';
+            });
+        } else if (taskType.includes('photo')) {
+            // 图片类型
+            const img = document.createElement('img');
+            img.className = 'modal-content';
+            img.style.maxWidth = '80%';
+            img.style.maxHeight = '70vh';
+            img.src = `/get_integrated_file?type=${taskType}&t=${timestamp}`;
+            img.alt = taskTitleMap[taskType];
+            img.onerror = function() {
+                contentEl.innerHTML = '<p style="color: white; text-align: center;">图片加载失败</p>';
+            };
+            contentEl.appendChild(img);
+        } else if (taskType.includes('video')) {
+            // 视频类型：直接下载而不播放
+            contentEl.innerHTML = `
+                <div style="text-align: center; color: white;">
+                    <p style="margin-bottom: 20px; font-size: 18px;">正在准备下载 ${taskTitleMap[taskType]}...</p>
+                    <p style="font-size: 14px; opacity: 0.8;">如果下载没有自动开始，请 <a href="/get_integrated_file?type=${taskType}&t=${timestamp}" style="color: #007bff; text-decoration: underline;">点击这里</a> 手动下载</p>
+                </div>
+            `;
+            // 自动触发下载
+            window.location.href = `/get_integrated_file?type=${taskType}&t=${timestamp}`;
+        }
+    }
+
+    function closeIntegratedModal() {
+        const modal = document.getElementById('integratedModal');
+        modal.style.display = "none";
+        
+        // 停止视频播放
+        const contentEl = document.getElementById('integratedModalContent');
+        contentEl.innerHTML = '';
+    }
+
+    // 点击模态框外部关闭
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('integratedModal');
+        if (event.target === modal) {
+            closeIntegratedModal();
+        }
+    });
+
+    function testSingleTask(taskName) {
+        // 更新状态为测试中
+        const loadingEl = document.getElementById('loading-' + taskName);
+        const taskEl = document.getElementById('task-' + taskName);
+        if (loadingEl && taskEl) {
+            taskEl.textContent = '测试中';
+            loadingEl.classList.add('active');
+        }
+        
+        fetch('/test_single_integrated_task', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ task_name: taskName })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                updateIntegratedError(data.error || '测试失败');
+                if (taskEl) {
+                    taskEl.textContent = '未完成';
+                }
+                if (loadingEl) {
+                    loadingEl.classList.remove('active');
+                }
+                return;
+            }
+            
+            // 更新任务状态
+            if (data.result === 'success') {
+                if (taskEl) {
+                    taskEl.textContent = '测试完成';
+                }
+            } else {
+                if (taskEl) {
+                    taskEl.textContent = '未完成';
+                }
+            }
+            if (loadingEl) {
+                loadingEl.classList.remove('active');
+            }
+            
+            // 刷新状态
+            fetch('/get_integrated_info')
+            .then(response => response.json())
+            .then(data => {
+                applyIntegratedInfo(data);
+            });
+        })
+        .catch(error => {
+            console.error('请求出错:', error);
+            updateIntegratedError('请求异常');
+            if (taskEl) {
+                taskEl.textContent = '未完成';
+            }
+            if (loadingEl) {
+                loadingEl.classList.remove('active');
+            }
+        });
+    }
+
+    function startTest(testType) {
+        // 初始化测试状态
+        currentTestProgress = {
+            'light_photo': 'running',
+            'light_video': 'pending',
+            'thermal_photo': 'pending',
+            'thermal_video': 'pending',
+            'thermal_Temperature': 'pending',
+            'light_PTZ': 'pending',
+            'light_point': 'pending',
+            'thermal_point': 'pending',
+            'Manual_focusing': 'pending',
+            'Auto_focusing': 'pending'
+        };
+        updateIntegratedError('');
+        
+        // 更新UI显示实时进度
+        updateTaskStatus(currentTestProgress, true);
+        
+        fetch('/start_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test_type: 'integrated' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                updateIntegratedError(data.error || '启动失败');
+                return;
+            }
+            if (data.task_status) {
+                currentTestProgress = data.task_status;
+                updateTaskStatus(currentTestProgress, true);
+            }
+        })
+        .catch(error => {
+            console.error('请求出错:', error);
+            // 测试失败时更新状态
+            currentTestProgress = {
+                'light_photo': 'failed',
+                'light_video': 'failed',
+                'thermal_photo': 'failed',
+                'thermal_video': 'failed',
+                'light_PTZ': 'failed',
+                'light_point': 'failed',
+                'thermal_point': 'failed',
+                'Manual_focusing': 'failed',
+                'Auto_focusing': 'failed',
+                'thermal_Temperature': 'failed'
+            };
+            updateTaskStatus(currentTestProgress, true);
+            updateIntegratedError('启动请求异常');
+        });
+    }
+    
+    function updateTaskStatus(taskStatus, isRealTime = false) {
+        // 遍历任务状态对象的所有键
+        Object.keys(taskStatus).forEach(key => {
+            // 跳过time字段
+            if (key !== 'time') {
+                const elementId = 'task-' + key;
+                const loadingId = 'loading-' + key;
+                const taskEl = document.getElementById(elementId);
+                const loadingEl = document.getElementById(loadingId);
+                
+                if (taskEl && loadingEl) {
+                    // 隐藏所有加载动画
+                    loadingEl.classList.remove('active');
+                    
+                    // 根据状态更新显示
+                if (taskStatus[key] === 'running') {
+                    taskEl.textContent = '测试中';
+                    loadingEl.classList.add('active');
+                } else if (taskStatus[key] === 'success' || taskStatus[key] === 'completed') {
+                    taskEl.textContent = '测试完成';
+                } else if (taskStatus[key] === 'failed') {
+                    taskEl.textContent = '未完成';
+                } else if (taskStatus[key] === 'pending') {
+                    taskEl.textContent = '未测试';
+                } else {
+                    taskEl.textContent = '未测试';
+                }
+                }
+            }
+        });
+    }
+    
+    function endTest(testType, result) {
+        fetch('/end_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test_type: testType, result: result })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTestStatus(testType, result);
+                // 自动跳转到下一个测试项目
+                const nextTestType = getNextTestType(testType);
+                if (nextTestType) {
+                    setTimeout(() => {
+                        navigateToTest(nextTestType);
+                    }, 500); // 延迟500ms跳转，给用户时间看到测试结果
+                }
+            }
+        });
+    }
+    
+    // 页面加载时从JSON读取任务状态
+    document.addEventListener('DOMContentLoaded', function() {
+        function applyIntegratedInfo(data) {
+            if (!data.success) {
+                return;
+            }
+            if (data.task_status) {
+                // 使用服务器返回的状态
+                currentTestProgress = data.task_status;
+                updateTaskStatus(currentTestProgress, true);
+            }
+            updateIntegratedError(data.error || '');
+            const testTimeElement = document.getElementById('test-time');
+            if (testTimeElement && data.test_time) {
+                testTimeElement.textContent = `测试时间: ${data.test_time}`;
+            }
+        }
+
+        // 读取任务状态
+        fetch('/get_integrated_info')
+        .then(response => response.json())
+        .then(data => {
+            applyIntegratedInfo(data);
+        })
+        .catch(error => {
+            console.log('获取任务状态失败:', error);
+        });
+        
+        // 同时获取并更新测试状态
+        fetch('/get_test_status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.test_status) {
+                if (typeof updateAllTestStatus === 'function') {
+                    updateAllTestStatus(data.test_status);
+                }
+                if (data.test_times && data.test_times.integrated) {
+                    const testTimeElement = document.getElementById('test-time');
+                    if (testTimeElement) {
+                        testTimeElement.textContent = `测试时间: ${data.test_times.integrated}`;
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.log('获取测试状态失败:', error);
+        });
+        
+        // 定时刷新任务状态
+        setInterval(function() {
+            // 当刷新未暂停时，获取最新的测试结果
+            if (!isRefreshPaused) {
+                fetch('/get_integrated_info')
+                .then(response => response.json())
+                .then(data => {
+                    applyIntegratedInfo(data);
+                })
+                .catch(error => {
+                    console.log('刷新任务状态失败:', error);
+                });
+            }
+        }, 1000); // 每1秒刷新一次
+    });
+</script>

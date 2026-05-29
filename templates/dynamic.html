@@ -1,0 +1,695 @@
+<div class="test-ui">
+    <h2>动态测试</h2>
+    <p>请将机器人遥控到起点后开始测试</p>
+
+    
+    <!-- 任务状态显示区域 -->
+    <div class="task-info">
+        <h3>任务状态</h3>
+        <div id="task-list">
+            <!-- 任务列表将通过JavaScript动态生成 -->
+        </div>
+    </div>
+    
+    <div class="ui-buttons">
+        <button class="btn btn-primary" onclick="startTest('dynamic')">开始测试</button>
+        <button class="btn btn-primary" onclick="endTest('dynamic', 'success')">测试成功</button>
+        <button class="btn btn-primary" onclick="endTest('dynamic', 'failed')">测试失败</button>
+    </div>
+    <div class="current-area">
+        <span class="area-label">当前区域:</span>
+        <span class="area-value" id="area-value">-</span>
+    </div>
+    <div class="current-step">
+        <span class="area-label">当前步骤:</span>
+        <span class="step-value" id="current-step">待开始</span>
+    </div>
+    <div class="step-error" id="step-error"></div>
+    <div class="test-time" id="test-time"></div>
+</div>
+
+<!-- 自定义确认对话框 -->
+<div class="custom-dialog" id="dynamicConfirmDialog" style="display: none;">
+    <div class="dialog-content">
+        <div class="dialog-message" id="dialogMessage">请确认：<br>1. 机器人已停到起始点<br>. </div>
+        <div class="dialog-buttons">
+            <button class="btn btn-primary" onclick="handleDynamicDialogResponse(true)">确认</button>
+            <button class="btn btn-primary" onclick="handleDynamicDialogResponse(false)">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 图片查看模态框 -->
+<div id="imageModal" class="image-modal">
+  <span class="close-modal" onclick="closeImageModal()">&times;</span>
+  <div id="temperatureContainer" style="color: white; text-align: center; margin-top: 60px; padding: 15px; background-color: rgba(0, 0, 0, 0.7); border-radius: 10px; width: 80%; margin-left: auto; margin-right: auto;">
+      <h3 style="margin: 0 0 15px 0; color: #4CAF50;">温度数据</h3>
+      <div id="temperatureData" style="font-size: 16px; display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;">
+          <div style="background-color: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 8px;">
+              <h4 style="margin: 0 0 10px 0; color: #ff9800;">普通测温</h4>
+              <p>最低温度: <span id="normalMinTemp">--</span> °C</p>
+              <p>最高温度: <span id="normalMaxTemp">--</span> °C</p>
+          </div>
+          <div style="background-color: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 8px;">
+              <h4 style="margin: 0 0 10px 0; color: #2196F3;">专家测温</h4>
+              <p>最低温度: <span id="expertMinTemp">--</span> °C</p>
+              <p>平均温度: <span id="expertAvgTemp">--</span> °C</p>
+              <p>最高温度: <span id="expertMaxTemp">--</span> °C</p>
+          </div>
+      </div>
+  </div>
+  <div class="modal-body" style="display: flex; flex-direction: column; gap: 20px; padding: 20px;">
+      <div style="width: 100%;">
+          <h3 style="color: white; text-align: center; margin-bottom: 10px;">可见光拍照</h3>
+          <div style="display: flex; justify-content: space-around; gap: 16px;">
+              <img class="modal-content" id="visibleImage" style="width: 100%; max-width: 800px; max-height: 600px;">
+          </div>
+      </div>
+      <div style="width: 100%;">
+          <h3 style="color: white; text-align: center; margin-bottom: 10px;">热成像拍照</h3>
+          <div style="display: flex; justify-content: space-around; gap: 16px;">
+              <img class="modal-content" id="thermalImage" style="width: 100%; max-width: 800px; max-height: 600px;">
+          </div>
+      </div>
+      <div style="width: 100%;">
+          <h3 style="color: white; text-align: center; margin-bottom: 10px;">ptz拍照</h3>
+          <div style="display: flex; justify-content: space-around; gap: 16px;">
+              <img class="modal-content" id="ptzImage1" style="width: 45%; max-width: none;">
+              <img class="modal-content" id="ptzImage2" style="width: 45%; max-width: none;">
+          </div>
+      </div>
+      <div style="width: 100%;">
+          <h3 style="color: white; text-align: center; margin-bottom: 10px;">预置点拍照</h3>
+          <div style="display: flex; justify-content: space-around; gap: 16px;">
+              <img class="modal-content" id="presetImage1" style="width: 45%; max-width: none;">
+              <img class="modal-content" id="presetImage2" style="width: 45%; max-width: none;">
+          </div>
+      </div>
+  </div>
+  <div id="caption"></div>
+</div>
+
+<style>
+    .task-info {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #f9f9f9;
+    }
+    .task-info h3 {
+        margin-top: 0;
+        color: #555;
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+    .task-item {
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .task-item:last-child {
+        border-bottom: none;
+    }
+    .task-label {
+        font-weight: bold;
+        color: #333;
+    }
+    .task-status-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .task-value {
+        color: #666;
+    }
+    .task-loading {
+        width: 16px;
+        height: 16px;
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        display: none;
+    }
+    .task-loading.active {
+        display: inline-block;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .test-time {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #999;
+        text-align: right;
+    }
+    .current-area {
+        margin-top: 15px;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #f0f8ff;
+    }
+    .area-label {
+        font-weight: bold;
+        color: #333;
+    }
+    .area-value {
+        margin-left: 10px;
+        color: #007bff;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    .current-step {
+        margin-top: 10px;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #fffdf0;
+    }
+    .step-value {
+        margin-left: 10px;
+        color: #8a6d3b;
+        font-size: 15px;
+        font-weight: bold;
+    }
+    .step-error {
+        margin-top: 10px;
+        color: #d93025;
+        font-size: 14px;
+        min-height: 20px;
+        font-weight: bold;
+    }
+    
+    /* 自定义对话框样式 */
+    .custom-dialog {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    }
+    .dialog-content {
+        background-color: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        width: 400px;
+        max-width: 90%;
+    }
+    .dialog-message {
+        font-size: 16px;
+        margin-bottom: 20px;
+        text-align: center;
+        color: #333;
+    }
+    .dialog-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+    }
+
+    /* 图片模态框样式 */
+    .image-modal {
+        display: none; 
+        position: fixed; 
+        z-index: 10001; 
+        padding-top: 50px; 
+        left: 0;
+        top: 0;
+        width: 100%; 
+        height: 100%; 
+        overflow: auto; 
+        background-color: rgba(0,0,0,0.9); 
+    }
+
+    .image-modal .modal-content {
+        margin: auto;
+        display: block;
+        width: 80%;
+        max-width: 700px;
+    }
+
+    .close-modal {
+        position: absolute;
+        top: 15px;
+        right: 35px;
+        color: #f1f1f1;
+        font-size: 40px;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+
+    .close-modal:hover,
+    .close-modal:focus {
+        color: #bbb;
+        text-decoration: none;
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    // 存储当前测试状态，用于显示实时进度
+    let currentTestProgress = {};
+    
+    // 控制是否暂停刷新任务状态
+    let isRefreshPaused = false;
+    let hasShownDynamicError = false;
+    
+    // HSR机型动态任务列表
+    const hsrDynamicTasks = ['直线', '切区', '横移', '沟壑', '45°夹角', '精定位', '云台', '上集成'];
+    // 默认机型动态任务列表
+    const defaultDynamicTasks = ['直线', '切区', '曲线', '沟壑', '云台'];
+
+    function getCurrentModel() {
+        const robotInfo = window.robotInfo || {};
+        return robotInfo.model || '';
+    }
+    
+    function getDynamicTasks() {
+        const model = getCurrentModel();
+        return model === 'HSR' ? hsrDynamicTasks : defaultDynamicTasks;
+    }
+    
+    function initTaskList() {
+        const taskListEl = document.getElementById('task-list');
+        if (!taskListEl) return;
+        
+        const tasks = getDynamicTasks();
+        let html = '';
+        
+        tasks.forEach(taskName => {
+            const isYuntai = taskName === '云台';
+            const viewButton = isYuntai ? '<button class="btn btn-primary" style="padding: 2px 8px; font-size: 12px; margin-right: 10px;" onclick="viewPtzResult()">查看结果</button>' : '';
+            html += `
+                <div class="task-item">
+                    <span class="task-label">${taskName}任务:</span>
+                    <div class="task-status-container">
+                        ${viewButton}
+                        <span class="task-value" id="task-${taskName}">未测试</span>
+                        <span class="task-loading" id="loading-${taskName}"></span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        taskListEl.innerHTML = html;
+        
+        // 初始化测试进度
+        const initialProgress = {};
+        tasks.forEach(taskName => {
+            initialProgress[taskName] = '未测试';
+        });
+        currentTestProgress = initialProgress;
+    }
+    
+    function updateCurrentStep(stepText, stepStatus) {
+        const currentStepEl = document.getElementById('current-step');
+        if (!currentStepEl) {
+            return;
+        }
+        const prefixMap = {
+            running: '执行中',
+            success: '已完成',
+            failed: '失败',
+            stopped: '已中断'
+        };
+        const prefix = prefixMap[stepStatus] ? `[${prefixMap[stepStatus]}] ` : '';
+        currentStepEl.textContent = `${prefix}${stepText || '待开始'}`;
+    }
+
+    function updateDynamicError(errorText) {
+        const errorEl = document.getElementById('step-error');
+        if (!errorEl) {
+            return;
+        }
+        if (errorText) {
+            errorEl.textContent = `错误信息: ${errorText}`;
+            if (!hasShownDynamicError) {
+                hasShownDynamicError = true;
+                alert(`动态测试失败: ${errorText}`);
+            }
+        } else {
+            errorEl.textContent = '';
+            hasShownDynamicError = false;
+        }
+    }
+    
+    function viewPtzResult() {
+        const modal = document.getElementById('imageModal');
+        const ptzImage1 = document.getElementById("ptzImage1");
+        const ptzImage2 = document.getElementById("ptzImage2");
+        const presetImage1 = document.getElementById("presetImage1");
+        const presetImage2 = document.getElementById("presetImage2");
+        const visibleImage = document.getElementById("visibleImage");
+        const thermalImage = document.getElementById("thermalImage");
+        
+        modal.style.display = "block";
+
+        function setValue(id, value) {
+            document.getElementById(id).textContent = value === null || value === undefined ? '--' : value;
+        }
+
+        function loadImages() {
+            const t = new Date().getTime();
+            
+            const model = getCurrentModel();
+            
+            if (model === 'HSR') {
+                visibleImage.src = "/get_integrated_file?type=light_photo&t=" + t;
+                thermalImage.src = "/get_integrated_file?type=thermal_photo&t=" + t;
+                
+                visibleImage.onerror = function() { this.style.display = 'none'; };
+                thermalImage.onerror = function() { this.style.display = 'none'; };
+                
+                ptzImage1.style.display = 'none';
+                ptzImage2.style.display = 'none';
+                presetImage1.style.display = 'none';
+                presetImage2.style.display = 'none';
+            } else {
+                visibleImage.style.display = 'none';
+                thermalImage.style.display = 'none';
+                
+                ptzImage1.src = "/get_ptz_image?type=ptz_1&t=" + t;
+                ptzImage2.src = "/get_ptz_image?type=ptz_2&t=" + t;
+                presetImage1.src = "/get_ptz_image?type=preset_1&t=" + t;
+                presetImage2.src = "/get_ptz_image?type=preset_2&t=" + t;
+
+                ptzImage1.onerror = function() { this.alt = "ptz拍照-图片1获取失败"; };
+                ptzImage2.onerror = function() { this.alt = "ptz拍照-图片2获取失败"; };
+                presetImage1.onerror = function() { this.alt = "预置点拍照-图片1获取失败"; };
+                presetImage2.onerror = function() { this.alt = "预置点拍照-图片2获取失败"; };
+            }
+        }
+
+        const model = getCurrentModel();
+        if (model === 'HSR') {
+            fetch('/get_temperature_data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        setValue('normalMinTemp', data.data.min_temp);
+                        setValue('normalMaxTemp', data.data.max_temp);
+                    } else {
+                        console.error('获取温度数据失败:', data.error);
+                    }
+                    loadImages();
+                })
+                .catch(error => {
+                    console.error('请求温度数据出错:', error);
+                    loadImages();
+                });
+        } else {
+            fetch('/get_temperature')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const normal = data.temperature.normal_temperature || {};
+                        const expert = data.temperature.expert_temperature || {};
+
+                        setValue('normalMinTemp', normal.min_temperature);
+                        setValue('normalMaxTemp', normal.max_temperature);
+                        setValue('expertMinTemp', expert.min_temperature);
+                        setValue('expertAvgTemp', expert.average_temperature);
+                        setValue('expertMaxTemp', expert.max_temperature);
+                    } else {
+                        console.error('获取温度数据失败:', data.error);
+                    }
+                    loadImages();
+                })
+                .catch(error => {
+                    console.error('请求温度数据出错:', error);
+                    loadImages();
+                });
+        }
+    }
+
+    function closeImageModal() {
+        document.getElementById('imageModal').style.display = "none";
+    }
+
+    // 点击模态框外部关闭
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('imageModal');
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    });
+
+    function startTest(testType) {
+        // 显示自定义确认对话框
+        if (testType === 'dynamic') {
+            const dialog = document.getElementById('dynamicConfirmDialog');
+            const dialogMessage = document.getElementById('dialogMessage');
+            const model = getCurrentModel();
+            
+            if (model === 'HSR') {
+                dialogMessage.innerHTML = '请确认：<br>1. 机器人已停到起始点<br>2. 点击开始测试前切换成手动，任务下发后切成自动<br>3. 自行打开toolkit监控区域';
+            } else {
+                dialogMessage.innerHTML = '请确认：<br>1. 机器人已停到起始点<br>.';
+            }
+            
+            dialog.style.display = 'flex';
+        }
+    }
+    
+    function handleDynamicDialogResponse(confirmed) {
+        // 隐藏对话框
+        document.getElementById('dynamicConfirmDialog').style.display = 'none';
+        
+        if (!confirmed) {
+            return;
+        }
+        
+        // 初始化测试状态
+        const tasks = getDynamicTasks();
+        currentTestProgress = {};
+        tasks.forEach((taskName, index) => {
+            currentTestProgress[taskName] = index === 0 ? '测试中' : '等待测试';
+        });
+        updateCurrentStep('请求启动动态测试', 'running');
+        updateDynamicError('');
+        
+        // 更新UI显示实时进度
+        updateTaskStatus(currentTestProgress, true);
+        
+        // 获取IP地址并打开新网页
+        const ipInput = document.getElementById('ip-input');
+        if (ipInput && ipInput.value) {
+            const ip = ipInput.value;
+            const url = `http://${ip}:8081/#/AGV/AGVoperating`;
+            window.open(url, '_blank');
+        }
+        
+        fetch('/start_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test_type: 'dynamic' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                updateDynamicError(data.error || '启动失败');
+                return;
+            }
+            if (data.task_status) {
+                currentTestProgress = data.task_status;
+                updateTaskStatus(currentTestProgress, true);
+            }
+            if (data.current_step || data.step_status) {
+                updateCurrentStep(data.current_step || '准备执行动态任务', data.step_status);
+            }
+        })
+        .catch(error => {
+            console.error('请求出错:', error);
+            // 测试失败时更新状态
+            const tasks = getDynamicTasks();
+            currentTestProgress = {};
+            tasks.forEach(taskName => {
+                currentTestProgress[taskName] = '测试失败';
+            });
+            updateTaskStatus(currentTestProgress, true);
+            updateDynamicError('启动请求异常');
+        });
+    }
+    
+    function updateTaskStatus(taskStatus, isRealTime = false) {
+        // 遍历任务状态对象的所有键
+        Object.keys(taskStatus).forEach(key => {
+            // 跳过time字段
+            if (key !== 'time') {
+                const elementId = 'task-' + key;
+                const loadingId = 'loading-' + key;
+                const taskEl = document.getElementById(elementId);
+                const loadingEl = document.getElementById(loadingId);
+                
+                if (taskEl && loadingEl) {
+                    // 隐藏所有加载动画
+                    loadingEl.classList.remove('active');
+                    
+                    // 根据状态更新显示
+                if (taskStatus[key] === 'pending' || taskStatus[key] === 'running') {
+                    taskEl.textContent = '测试中';
+                    loadingEl.classList.add('active');
+                } else if (taskStatus[key] === 'success' || taskStatus[key] === 'completed') {
+                    taskEl.textContent = '测试完成';
+                } else if (taskStatus[key] === 'failed') {
+                    taskEl.textContent = '未完成';
+                } else {
+                    taskEl.textContent = '未完成';
+                }
+                }
+            }
+        });
+    }
+    
+    function endTest(testType, result) {
+        fetch('/end_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test_type: testType, result: result })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTestStatus(testType, result);
+                // 自动跳转到下一个测试项目
+                const nextTestType = getNextTestType(testType);
+                if (nextTestType) {
+                    setTimeout(() => {
+                        navigateToTest(nextTestType);
+                    }, 500); // 延迟500ms跳转，给用户时间看到测试结果
+                }
+            }
+        });
+    }
+    
+    // 页面加载时从JSON读取任务状态
+    document.addEventListener('DOMContentLoaded', function() {
+        function applyDynamicInfo(data) {
+            if (!data.success) {
+                return;
+            }
+            if (data.task_status) {
+                if (!Object.values(currentTestProgress).some(status => status === '测试中' || status === '等待测试')) {
+                    updateTaskStatus(data.task_status, false);
+                } else {
+                    updateTaskStatus(data.task_status, true);
+                }
+            }
+            if (data.current_step || data.step_status) {
+                updateCurrentStep(data.current_step, data.step_status);
+            }
+            updateDynamicError(data.error || '');
+            const testTimeElement = document.getElementById('test-time');
+            if (testTimeElement && data.test_time) {
+                testTimeElement.textContent = `测试时间: ${data.test_time}`;
+            }
+        }
+
+        // 获取机器人信息以确定机型
+        fetch('/get_robot_info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.robot_info) {
+                window.robotInfo = data.robot_info;
+            }
+            // 初始化任务列表
+            initTaskList();
+            
+            // 读取任务状态
+            fetch('/get_dynamic_info')
+            .then(response => response.json())
+            .then(data => {
+                applyDynamicInfo(data);
+            })
+            .catch(error => {
+                console.log('获取任务状态失败:', error);
+            });
+        })
+        .catch(error => {
+            console.log('获取机器人信息失败:', error);
+            // 如果获取机器人信息失败，使用默认任务列表
+            initTaskList();
+            
+            // 读取任务状态
+            fetch('/get_dynamic_info')
+            .then(response => response.json())
+            .then(data => {
+                applyDynamicInfo(data);
+            })
+            .catch(error => {
+                console.log('获取任务状态失败:', error);
+            });
+        });
+        
+        // 同时获取并更新测试状态
+        fetch('/get_test_status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.test_status) {
+                if (typeof updateAllTestStatus === 'function') {
+                    updateAllTestStatus(data.test_status);
+                }
+                if (data.test_times && data.test_times.dynamic) {
+                    const testTimeElement = document.getElementById('test-time');
+                    if (testTimeElement) {
+                        testTimeElement.textContent = `测试时间: ${data.test_times.dynamic}`;
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.log('获取测试状态失败:', error);
+        });
+        
+        // 定时刷新任务状态
+        setInterval(function() {
+            // 当刷新未暂停时，获取最新的测试结果
+            if (!isRefreshPaused) {
+                fetch('/get_dynamic_info')
+                .then(response => response.json())
+                .then(data => {
+                    applyDynamicInfo(data);
+                })
+                .catch(error => {
+                    console.log('刷新任务状态失败:', error);
+                });
+            }
+        }, 1000); // 每1秒刷新一次
+
+        // 定时刷新lidar field数据
+        setInterval(function() {
+            fetch('/get_lidar_field')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const areaValueEl = document.getElementById('area-value');
+                    if (areaValueEl) {
+                        if (data.data !== null && data.data !== undefined) {
+                            areaValueEl.textContent = data.data;
+                        } else {
+                            areaValueEl.textContent = '-';
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.log('刷新lidar field数据失败:', error);
+            });
+        }, 150); // 每150ms刷新一次
+    });
+</script>

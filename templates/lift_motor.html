@@ -1,0 +1,87 @@
+<div class="test-ui">
+    <h2>升降电机检测</h2>
+    <p>电机升降过程中，拍急停，看是否能停住，松开急停，看是否能继续</p>
+    
+    <div class="ui-buttons">
+        <button class="btn btn-primary" onclick="startTest('lift_motor')">开始测试</button>
+        <button class="btn btn-primary" onclick="endTest('lift_motor', 'success')">测试成功</button>
+        <button class="btn btn-primary" onclick="endTest('lift_motor', 'failed')">测试失败</button>
+    </div>
+    <div class="test-time" id="test-time"></div>
+</div>
+
+<style>
+    .test-time {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #999;
+        text-align: right;
+    }
+</style>
+
+<script>
+    function startTest(testType) {
+        showLoading();
+        
+        fetch('/start_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test_type: testType })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('请求出错:', error);
+        });
+    }
+    
+    function endTest(testType, result) {
+        fetch('/end_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test_type: testType, result: result })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTestStatus(testType, result);
+                const nextTestType = getNextTestType(testType);
+                if (nextTestType) {
+                    setTimeout(() => {
+                        navigateToTest(nextTestType);
+                    }, 500);
+                }
+            }
+        });
+    }
+    
+    // 页面加载时获取测试时间
+    document.addEventListener('DOMContentLoaded', function() {
+        // 获取并更新测试状态和时间
+        fetch('/get_test_status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.test_status) {
+                if (typeof updateAllTestStatus === 'function') {
+                    updateAllTestStatus(data.test_status);
+                }
+                if (data.test_times && data.test_times.lift_motor) {
+                    const testTimeElement = document.getElementById('test-time');
+                    if (testTimeElement) {
+                        testTimeElement.textContent = `测试时间: ${data.test_times.lift_motor}`;
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.log('获取测试状态失败:', error);
+        });
+    });
+</script>

@@ -1,0 +1,97 @@
+{
+  "robot_info": {
+    "sn": "SN112233444",
+    "tester": "唐子强",
+    "model": "HSR",
+    "ip": "192.168.16.178"
+  },
+  "manual": {
+    "data": {
+      "底盘左右盖板检测": {
+        "result": "failed",
+        "time": "2026-05-18 16:54:17"
+      },
+      "外观检查": {
+        "result": "success",
+        "time": "2026-05-18 19:35:58"
+      },
+      "整机尺寸确认": {
+        "result": "failed",
+        "time": "2026-05-18 19:20:08"
+      },
+      "雷达安装高度确认": {
+        "result": "failed",
+        "time": "2026-05-18 19:20:16"
+      },
+      "喇叭音量检查": {
+        "result": "success",
+        "time": "2026-05-18 19:20:19"
+      },
+      "短时间触发防撞条（依次测试前，后，左，右）": {
+        "result": "success",
+        "time": "2026-05-18 18:15:27"
+      },
+      "防撞条触发声光状态": {
+        "result": "success",
+        "time": "2026-05-18 18:15:30"
+      },
+      "雷达高度": {
+        "result": "success",
+        "time": "2026-05-18 19:50:38"
+      }
+    },
+    "time": "2026-05-18 19:50:38"
+  },
+  "version": {
+    "pilot_version": "🚨 HSR pilot_version 获取失败: timed out",
+    "compass_version": "🚨 HSR compass_version 获取失败: timed out",
+    "rcc_base_version": "🚨 RCC Base 版本获取失败: [WinError 10060] 由于连接方在一段时间后没有正确答复或连接的主机没有反应，连接尝试失败。",
+    "mirror_system": "🚨 SSH连接失败: timed out",
+    "result": "failed",
+    "time": "2026-05-19 08:48:18"
+  },
+  "sensor": {
+    "result": "failed",
+    "data": {
+      "ks114_sensor": null,
+      "imu_data": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.241992410614,
+        "w": 0.970278142187
+      },
+      "encoder": [
+        -12210706,
+        43954667
+      ],
+      "odom": {
+        "x": 2.04658043676,
+        "y": 6.89773761997,
+        "z": 0.0
+      },
+      "tfmini_sensor": null,
+      "cpu_hz": [
+        2676.138,
+        2659.473,
+        2655.709,
+        2665.35
+      ],
+      "scan_1": "大量数据"
+    },
+    "time": "2026-05-18 18:40:37"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": null,
+      "192.168.2.63": null,
+      "192.168.2.88": null,
+      "192.168.2.90": null,
+      "192.168.2.250": null,
+      "192.168.2.2": null,
+      "192.168.2.89": null,
+      "192.168.0.100:8081": null
+    },
+    "time": "2026-05-19 08:48:46"
+  }
+}

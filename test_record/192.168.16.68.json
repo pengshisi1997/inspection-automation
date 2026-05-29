@@ -1,0 +1,222 @@
+{
+  "robot_info": {
+    "sn": "SNH202510026",
+    "tester": "容小娟",
+    "model": "MS",
+    "ip": "192.168.16.68"
+  },
+  "manual": {
+    "data": {
+      "手动充电": {
+        "result": "success",
+        "time": "2026-03-26 15:41:28"
+      },
+      "外观检查": {
+        "result": "success",
+        "time": "2026-03-26 15:30:42"
+      },
+      "雷达高度": {
+        "result": "success",
+        "time": "2026-03-26 15:33:45"
+      },
+      "铭牌信息检查": {
+        "result": "success",
+        "time": "2026-04-14 13:47:03",
+        "note": ""
+      },
+      "ECN变更检查": {
+        "result": "success",
+        "time": "2026-03-26 15:34:26"
+      },
+      "外部调试网口检查": {
+        "result": "success",
+        "time": "2026-03-26 15:34:28"
+      },
+      "异响检查": {
+        "result": "success",
+        "time": "2026-03-26 15:34:38"
+      },
+      "超声波距离": {
+        "result": "success",
+        "time": "2026-03-26 15:35:39"
+      },
+      "10米直线误差": {
+        "result": "success",
+        "time": "2026-03-26 15:41:22"
+      },
+      "手动遥控声光": {
+        "result": "success",
+        "time": "2026-03-26 15:41:23"
+      },
+      "ESD防静电": {
+        "result": "success",
+        "time": "2026-03-26 15:41:33"
+      },
+      "雷达避障": {
+        "result": "success",
+        "time": "2026-03-26 15:44:31"
+      },
+      "超声波避障": {
+        "result": "success",
+        "time": "2026-03-26 15:44:34"
+      },
+      "防撞条避障": {
+        "result": "success",
+        "time": "2026-03-26 15:44:37"
+      },
+      "手动建图": {
+        "result": "success",
+        "time": "2026-03-26 15:46:52"
+      },
+      "节点开启和关闭检查": {
+        "result": "success",
+        "time": "2026-03-26 18:42:31"
+      },
+      "精度测试": {
+        "result": "success",
+        "time": "2026-03-26 18:42:34"
+      },
+      "自动充电": {
+        "result": "success",
+        "time": "2026-04-14 13:47:10"
+      },
+      "老化数据": {
+        "result": "success",
+        "time": "2026-04-14 13:47:11"
+      }
+    },
+    "time": "2026-05-14 10:41:48",
+    "result": "success"
+  },
+  "version": {
+    "pilot_version": "release/v3.8.0_xjyw_v1.5.21_20260313",
+    "compass_version": "YOUICompassSetup-4.7.4-xjyw-V4.2.0-20260427.zip",
+    "rcc_base_version": "2.01",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "result": "success",
+    "time": "2026-05-14 10:28:16"
+  },
+  "sensor": {
+    "result": "success",
+    "data": {
+      "ks114_sensor": [
+        5657,
+        5657,
+        2057,
+        2096
+      ],
+      "imu_data": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.668100565292,
+        "w": 0.744070987646
+      },
+      "encoder": [
+        11107605,
+        8596864
+      ],
+      "odom": {
+        "x": -29.6872210867,
+        "y": 5.15088364833,
+        "z": 0.0
+      },
+      "cpu_hz": [
+        3355.538,
+        3410.81,
+        3423.002,
+        3436.163
+      ],
+      "scan_1": "大量数据"
+    },
+    "time": "2026-05-14 10:29:36"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "0.774 ms",
+      "192.168.2.63": "0.778 ms",
+      "192.168.2.250": "0.442 ms",
+      "192.168.0.100": "0.023 ms",
+      "192.168.2.2": "0.016 ms",
+      "192.168.0.100:8081": "0.100 ms"
+    },
+    "time": "2026-05-14 10:29:50"
+  },
+  "button": {
+    "data": {
+      "emergency_stop": "success"
+    },
+    "time": "2026-05-14 10:30:26",
+    "result": "success"
+  },
+  "anti_collision": {
+    "data": {
+      "front": "success",
+      "back": "success"
+    },
+    "newton": {
+      "front": 33,
+      "back": 32
+    },
+    "time": "2026-05-14 10:31:02",
+    "result": "success"
+  },
+  "speaker": {
+    "result": "success",
+    "time": "2026-05-14 10:31:34"
+  },
+  "light": {
+    "data": {
+      "red": "success",
+      "blue": "success",
+      "green": "success"
+    },
+    "time": "2026-05-14 10:32:12",
+    "result": "success"
+  },
+  "dynamic": {
+    "data": {
+      "直线": "success",
+      "切区": "success",
+      "曲线": "success",
+      "沟壑": "success",
+      "云台": "success",
+      "time": "2026-05-14 10:41:11"
+    },
+    "result": "success",
+    "time": "2026-05-14 10:41:30",
+    "current_step": "动态测试完成",
+    "step_status": "success",
+    "init_steps": [
+      {
+        "name": "切换手动模式",
+        "status": "success"
+      },
+      {
+        "name": "导入地图",
+        "status": "success"
+      },
+      {
+        "name": "上传任务",
+        "status": "success"
+      },
+      {
+        "name": "启用地图",
+        "status": "success"
+      },
+      {
+        "name": "同步车辆地图",
+        "status": "success"
+      },
+      {
+        "name": "手动重定位",
+        "status": "success"
+      },
+      {
+        "name": "切换自动模式",
+        "status": "success"
+      }
+    ],
+    "error": ""
+  }
+}

@@ -1,0 +1,342 @@
+<div class="test-ui">
+    <h2>灯光测试</h2>
+    <p>检测机器人的灯光是否正常工作</p>
+    
+    <div class="button-info">
+        <h3>测试结果</h3>
+        {% if current_model and model_config[current_model].get('light') %}
+            {% for color in model_config[current_model]['light'] %}
+                <div class="button-item" id="{{ color }}-item">
+                    <span class="button-label">
+                        {% if color == 'red' %}红色灯光{% elif color == 'green' %}绿色灯光{% elif color == 'blue' %}蓝色灯光{% elif color == 'front_light' %}前补光灯{% elif color == 'back_light' %}后补光灯{% elif color == 'charge_relay' %}充电继电器{% else %}{{ color }}灯光{% endif %}:
+                    </span>
+                    <span class="button-value" id="{{ color }}-status">未检测</span>
+                    {% if color in ['front_light', 'back_light', 'charge_relay'] %}
+                        <div>
+                            <button class="btn btn-sm btn-primary" onclick="testLight('{{ color }}')">开启</button>
+                            <button class="btn btn-sm btn-secondary" onclick="turnOffLight('{{ color }}')">关闭</button>
+                        </div>
+                    {% else %}
+                        <button class="btn btn-sm btn-primary" onclick="testLight('{{ color }}')">点亮</button>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="button-item" id="red-item">
+                <span class="button-label">红色灯光:</span>
+                <span class="button-value" id="red-status">未检测</span>
+                <button class="btn btn-sm btn-primary" onclick="testLight('red')">点亮</button>
+            </div>
+            <div class="button-item" id="blue-item">
+                <span class="button-label">蓝色灯光:</span>
+                <span class="button-value" id="blue-status">未检测</span>
+                <button class="btn btn-sm btn-primary" onclick="testLight('blue')">点亮</button>
+            </div>
+            <div class="button-item" id="green-item">
+                <span class="button-label">绿色灯光:</span>
+                <span class="button-value" id="green-status">未检测</span>
+                <button class="btn btn-sm btn-primary" onclick="testLight('green')">点亮</button>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="ui-buttons">
+        <button class="btn btn-primary" onclick="endTest('light', 'success')">测试成功</button>
+        <button class="btn btn-primary" onclick="endTest('light', 'failed')">测试失败</button>
+    </div>
+    <div class="test-time" id="test-time"></div>
+</div>
+
+<!-- 自定义确认对话框 -->
+<div class="custom-dialog" id="lightConfirmDialog" style="display: none;">
+    <div class="dialog-content">
+        <div class="dialog-message" id="dialogMessage"></div>
+        <div class="dialog-buttons">
+            <button class="btn btn-primary" onclick="handleDialogResponse(true)">成功</button>
+            <button class="btn btn-primary" onclick="handleDialogResponse(false)">失败</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .button-info {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #f9f9f9;
+    }
+    .button-info h3 {
+        margin-top: 0;
+        color: #555;
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+    .button-item {
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .button-item:last-child {
+        border-bottom: none;
+    }
+    .button-label {
+        font-weight: bold;
+        color: #333;
+    }
+    .button-value {
+        color: #666;
+    }
+    .test-time {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #999;
+        text-align: right;
+    }
+    
+    /* 自定义对话框样式 */
+    .custom-dialog {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    }
+    .dialog-content {
+        background-color: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        width: 400px;
+        max-width: 90%;
+    }
+    .dialog-message {
+        font-size: 16px;
+        margin-bottom: 20px;
+        text-align: center;
+        color: #333;
+    }
+    .dialog-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+    }
+</style>
+
+<script>
+    let currentModel = '{{ current_model or "" }}';
+    let lightStatus = {};
+    let currentLightColor = null;
+    
+    // 初始化灯光状态
+    function initLightStatus() {
+        // 从模板中获取当前机型的灯光子项配置
+        const lightColors = {% if current_model and model_config[current_model].get('light') %}
+            {{ model_config[current_model]['light'] | tojson }}
+        {% else %}
+            ['red', 'blue', 'green']
+        {% endif %};
+        
+        // 初始化状态对象
+        lightColors.forEach(color => {
+            lightStatus[color] = null;
+        });
+    }
+    
+    function endTest(testType, result) {
+        fetch('/end_test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ test_type: testType, result: result })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTestStatus(testType, result);
+                const nextTestType = getNextTestType(testType);
+                if (nextTestType) {
+                    setTimeout(() => {
+                        navigateToTest(nextTestType);
+                    }, 500);
+                }
+            }
+        });
+    }
+    
+    function testLight(lightColor) {
+        showLoading();
+        const boundIp = sessionStorage.getItem('bound_ip') || '{{ bound_ip }}';
+        if (boundIp) {
+            fetch('/test_light', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ light_color: lightColor, action: 'on' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    let colorName = lightColor;
+                    if (lightColor === 'red') colorName = '红色';
+                    else if (lightColor === 'green') colorName = '绿色';
+                    else if (lightColor === 'blue') colorName = '蓝色';
+                    else if (lightColor === 'front_light') colorName = '前补光';
+                    else if (lightColor === 'back_light') colorName = '后补光';
+                    else if (lightColor === 'charge_relay') colorName = '充电继电器';
+                    
+                    // 保存当前灯光颜色
+                    currentLightColor = lightColor;
+                    
+                    // 显示自定义对话框
+                    const dialog = document.getElementById('lightConfirmDialog');
+                    const message = document.getElementById('dialogMessage');
+                    message.textContent = '灯光控制成功，' + colorName + '灯光是否正常点亮？';
+                    dialog.style.display = 'flex';
+                } else {
+                    alert('测试失败: ' + (data.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('请求出错:', error);
+                alert('测试过程中出错');
+            });
+        }
+    }
+    
+    function turnOffLight(lightColor) {
+        showLoading();
+        const boundIp = sessionStorage.getItem('bound_ip') || '{{ bound_ip }}';
+        if (boundIp) {
+            fetch('/test_light', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ light_color: lightColor, action: 'off' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    let colorName = lightColor;
+                    if (lightColor === 'front_light') colorName = '前补光';
+                    else if (lightColor === 'back_light') colorName = '后补光';
+                    else if (lightColor === 'charge_relay') colorName = '充电继电器';
+                    alert(colorName + '灯光已关闭');
+                } else {
+                    alert('操作失败: ' + (data.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('请求出错:', error);
+                alert('操作过程中出错');
+            });
+        }
+    }
+    
+    function handleDialogResponse(success) {
+        // 隐藏对话框
+        document.getElementById('lightConfirmDialog').style.display = 'none';
+        
+        if (currentLightColor) {
+            const testResult = success ? 'success' : 'failed';
+            lightStatus[currentLightColor] = testResult;
+            updateResultDisplays();
+            saveLightTestResult(currentLightColor, testResult);
+            currentLightColor = null;
+        }
+    }
+    
+    function saveLightTestResult(lightColor, result) {
+        const boundIp = sessionStorage.getItem('bound_ip') || '{{ bound_ip }}';
+        if (boundIp) {
+            fetch('/save_light_test_result', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ light_color: lightColor, result: result })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error('保存测试结果失败:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('保存测试结果出错:', error);
+            });
+        }
+    }
+    
+    function updateResultDisplays() {
+        Object.keys(lightStatus).forEach(color => {
+            const status = lightStatus[color];
+            const resultElement = document.getElementById(color + '-status');
+            if (resultElement) {
+                if (status) {
+                    resultElement.textContent = status === 'success' ? '成功' : '失败';
+                    resultElement.style.color = status === 'success' ? 'green' : 'red';
+                } else {
+                    resultElement.textContent = '未检测';
+                    resultElement.style.color = '#666';
+                }
+            }
+        });
+    }
+    
+    function loadLightStatus() {
+        const boundIp = sessionStorage.getItem('bound_ip') || '{{ bound_ip }}';
+        if (boundIp) {
+            fetch('/get_light_info')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.light_info) {
+                        // 从获取的灯光信息中初始化状态
+                        Object.keys(lightStatus).forEach(color => {
+                            lightStatus[color] = data.light_info[color] || null;
+                        });
+                        updateResultDisplays();
+                        const testTimeElement = document.getElementById('test-time');
+                        if (testTimeElement && data.test_time) {
+                            testTimeElement.textContent = '测试时间: ' + data.test_time;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('获取灯光状态失败:', error);
+                });
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        initLightStatus();
+        
+        loadLightStatus();
+        
+        fetch('/get_test_status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.test_status) {
+                if (typeof updateAllTestStatus === 'function') {
+                    updateAllTestStatus(data.test_status);
+                }
+                if (data.test_times && data.test_times.light) {
+                    const testTimeElement = document.getElementById('test-time');
+                    if (testTimeElement) {
+                        testTimeElement.textContent = '测试时间: ' + data.test_times.light;
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.log('获取测试状态失败:', error);
+        });
+    });
+</script>

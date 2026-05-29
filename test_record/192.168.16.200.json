@@ -1,0 +1,53 @@
+{
+  "robot_info": {
+    "sn": "",
+    "tester": "彭施思",
+    "model": "TW",
+    "ip": "192.168.16.200"
+  },
+  "sensor": {
+    "result": "success",
+    "data": {
+      "ks114_sensor": {
+        "front": {
+          "d0 02 B0": "D0 16 19 FF"
+        },
+        "back": {
+          "d2 02 B0": null
+        }
+      },
+      "imu_data": {
+        "x": 0.00606433488429,
+        "y": -0.0136275487021,
+        "z": -0.986682415009,
+        "w": -0.161972984672
+      },
+      "odom": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "cpu_hz": [
+        2897.195,
+        2897.452,
+        2898.8,
+        2895.681
+      ],
+      "temperature": 26.845199584960938,
+      "humidity": 43.03959655761719,
+      "pm10": 20.0,
+      "pm2_5": 14.0
+    },
+    "time": "2026-05-06 14:59:28"
+  },
+  "version": {
+    "pilot_version": "⚠️ 未检测到 youipilot 镜像，需人工处理",
+    "rcc_base_version": "2.01",
+    "robot_version": "⚠️ 未检测到 robot 版本文件，需人工处理",
+    "rws_version": "🚨 rws_version 获取失败: timed out",
+    "mirror_system": "🚨 SSH连接失败: [WinError 10054] 远程主机强迫关闭了一个现有的连接。",
+    "youiscript_version": "🚨 youiscript_version 获取失败: timed out",
+    "result": "failed",
+    "time": "2026-05-06 15:48:47"
+  }
+}

@@ -1,0 +1,222 @@
+{
+  "robot_info": {
+    "sn": "SNH202510029",
+    "tester": "刘梅",
+    "model": "MS",
+    "ip": "192.168.16.65"
+  },
+  "version": {
+    "pilot_version": "release/v3.8.0_xjyw_v1.5.21_20260313",
+    "compass_version": "YOUICompassSetup-4.7.4-xjyw-V4.2.0-20260427.zip",
+    "rcc_base_version": "2.01",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "result": "success",
+    "time": "2026-05-13 09:47:19"
+  },
+  "sensor": {
+    "result": "success",
+    "data": {
+      "ks114_sensor": [
+        5657,
+        842,
+        2709,
+        3173
+      ],
+      "imu_data": {
+        "x": -0.0,
+        "y": 0.0,
+        "z": 0.570378900775,
+        "w": -0.821381707583
+      },
+      "encoder": [
+        35546,
+        -131958
+      ],
+      "odom": {
+        "x": -0.182506416268,
+        "y": -0.436019728518,
+        "z": 0.0
+      },
+      "cpu_hz": [
+        3268.301,
+        3351.107,
+        3333.584,
+        3313.055
+      ],
+      "scan_1": "大量数据"
+    },
+    "time": "2026-05-13 09:47:39"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "0.434 ms",
+      "192.168.2.63": "1.540 ms",
+      "192.168.2.250": "0.508 ms",
+      "192.168.0.100": "0.023 ms",
+      "192.168.2.2": "0.016 ms",
+      "192.168.0.100:8081": "0.100 ms"
+    },
+    "time": "2026-05-13 09:47:45"
+  },
+  "button": {
+    "data": {
+      "emergency_stop": "success"
+    },
+    "time": "2026-05-13 09:49:30",
+    "result": "success"
+  },
+  "anti_collision": {
+    "data": {
+      "front": "success",
+      "back": "success"
+    },
+    "newton": {
+      "back": 28,
+      "front": 27
+    },
+    "time": "2026-05-13 09:50:22",
+    "result": "success"
+  },
+  "speaker": {
+    "result": "success",
+    "time": "2026-05-13 09:50:29"
+  },
+  "light": {
+    "data": {
+      "red": "success",
+      "blue": "success",
+      "green": "success"
+    },
+    "time": "2026-05-13 09:50:58",
+    "result": "success"
+  },
+  "dynamic": {
+    "data": {
+      "直线": "success",
+      "切区": "success",
+      "曲线": "success",
+      "沟壑": "success",
+      "云台": "success",
+      "time": "2026-05-13 10:10:57"
+    },
+    "result": "success",
+    "time": "2026-05-13 10:10:57",
+    "current_step": "动态测试完成",
+    "step_status": "success",
+    "init_steps": [
+      {
+        "name": "切换手动模式",
+        "status": "success"
+      },
+      {
+        "name": "导入地图",
+        "status": "success"
+      },
+      {
+        "name": "上传任务",
+        "status": "success"
+      },
+      {
+        "name": "启用地图",
+        "status": "success"
+      },
+      {
+        "name": "同步车辆地图",
+        "status": "success"
+      },
+      {
+        "name": "手动重定位",
+        "status": "success"
+      },
+      {
+        "name": "切换自动模式",
+        "status": "success"
+      }
+    ],
+    "error": ""
+  },
+  "manual": {
+    "data": {
+      "雷达高度": {
+        "result": "success",
+        "time": "2026-03-26 13:15:08"
+      },
+      "铭牌信息检查": {
+        "result": "success",
+        "time": "2026-04-03 16:25:53",
+        "note": "暂时未贴"
+      },
+      "ECN变更检查": {
+        "result": "success",
+        "time": "2026-03-26 13:17:04"
+      },
+      "外部调试网口检查": {
+        "result": "success",
+        "time": "2026-03-26 13:17:17"
+      },
+      "ESD防静电": {
+        "result": "success",
+        "time": "2026-03-26 13:18:34"
+      },
+      "异响检查": {
+        "result": "success",
+        "time": "2026-03-26 13:18:38"
+      },
+      "超声波距离": {
+        "result": "success",
+        "time": "2026-03-26 13:21:17"
+      },
+      "10米直线误差": {
+        "result": "success",
+        "time": "2026-03-26 13:23:10"
+      },
+      "节点开启和关闭检查": {
+        "result": "success",
+        "time": "2026-03-26 13:26:46"
+      },
+      "雷达避障": {
+        "result": "success",
+        "time": "2026-03-26 13:27:11"
+      },
+      "超声波避障": {
+        "result": "success",
+        "time": "2026-03-26 13:27:21"
+      },
+      "防撞条避障": {
+        "result": "success",
+        "time": "2026-03-26 13:27:24"
+      },
+      "外观检查": {
+        "result": "success",
+        "time": "2026-03-26 13:34:43"
+      },
+      "手动充电": {
+        "result": "success",
+        "time": "2026-03-26 13:34:48"
+      },
+      "手动遥控声光": {
+        "result": "success",
+        "time": "2026-03-26 13:36:33"
+      },
+      "手动建图": {
+        "result": "success",
+        "time": "2026-03-26 13:36:34"
+      },
+      "精度测试": {
+        "result": "success",
+        "time": "2026-03-27 11:12:06"
+      },
+      "自动充电": {
+        "result": "success",
+        "time": "2026-04-03 16:25:56"
+      },
+      "老化数据": {
+        "result": "success",
+        "time": "2026-04-03 16:25:57"
+      }
+    },
+    "time": "2026-05-13 10:13:35",
+    "result": "success"
+  }
+}

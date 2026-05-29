@@ -1,0 +1,89 @@
+{
+  "robot_info": {
+    "sn": "SNH202510038",
+    "tester": "柯洋洋",
+    "model": "X310",
+    "ip": "192.168.16.38"
+  },
+  "version": {
+    "pilot_version": "release/v3.8.0_xjyw_v1.5.21_20260313",
+    "compass_version": "YOUICompassSetup-4.7.4-xjyw-V4.2.0-20260211.zip",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "rcc_base_version": "2.01",
+    "result": "success",
+    "time": "2026-03-31 15:00:05"
+  },
+  "sensor": {
+    "result": "success",
+    "data": {
+      "ks114_sensor": [
+        2011,
+        1812,
+        5657,
+        5657
+      ],
+      "imu_data": {
+        "x": -0.00411033071578,
+        "y": 0.0020794137381,
+        "z": -0.946114122868,
+        "w": 0.323800593615
+      },
+      "encoder": [
+        0,
+        1
+      ],
+      "odom": {
+        "x": 7.49222314714,
+        "y": -12.9520750206,
+        "z": 0.0
+      },
+      "tfmini_sensor": [
+        59,
+        59,
+        56,
+        58
+      ],
+      "cpu_hz": [
+        3612.208,
+        3611.312,
+        3610.713,
+        3612.531
+      ],
+      "scan_1": "大量数据"
+    },
+    "time": "2026-03-31 15:00:16"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "0.734 ms",
+      "192.168.2.63": "0.770 ms",
+      "192.168.2.250": "0.377 ms",
+      "192.168.0.100": "0.022 ms",
+      "192.168.2.2": "0.013 ms",
+      "192.168.0.100:8081": "0.100 ms"
+    },
+    "time": "2026-03-30 17:10:33"
+  },
+  "button": {
+    "data": {
+      "emergency_stop": "success",
+      "voice": "success"
+    },
+    "time": "2026-03-31 14:53:41",
+    "result": "success"
+  },
+  "anti_collision": {
+    "data": {
+      "front": "success",
+      "back": "success"
+    },
+    "newton": {},
+    "time": "2026-03-31 14:54:13",
+    "result": "success"
+  },
+  "speaker": {
+    "result": "pending",
+    "time": "2026-03-31 14:54:15"
+  }
+}

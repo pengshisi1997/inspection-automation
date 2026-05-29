@@ -1,0 +1,156 @@
+{
+  "robot_info": {
+    "sn": "177",
+    "tester": "彭施思",
+    "model": "HSR",
+    "ip": "192.168.16.177"
+  },
+  "version": {
+    "pilot_version": "YouiPilot-release_v3.5.2_IDC——10-linux-amd64-20250729.deb",
+    "compass_version": "YOUICompass-4.6.0-IDC03-20250225",
+    "mirror_system": "Pilot3.7.0_2022-5-18--img",
+    "rws_version": "YOUIRWS_v2.0.2",
+    "result": "failed",
+    "time": "2026-05-27 13:40:49"
+  },
+  "sensor": {
+    "result": "success",
+    "data": {
+      "ks114_sensor": [
+        108,
+        108,
+        108,
+        108
+      ],
+      "imu_data": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.960204557176,
+        "w": 0.279297705645
+      },
+      "encoder": [
+        16522057,
+        16940727
+      ],
+      "odom": {
+        "x": 14.6170804128,
+        "y": 5.30588916549,
+        "z": 0.0
+      },
+      "tfmini_sensor": [
+        22,
+        21
+      ],
+      "byz06_sensor": 56.7999992371,
+      "fs00802_sensor": 65535.0,
+      "cpu_hz": [
+        3001.018,
+        3005.035,
+        3004.112,
+        2997.169
+      ],
+      "scan_1": "大量数据"
+    },
+    "time": "2026-05-15 17:15:17"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "0.835 ms",
+      "192.168.2.63": "0.743 ms",
+      "192.168.2.250": "0.424 ms",
+      "192.168.0.100": "0.026 ms",
+      "192.168.2.2": "0.027 ms",
+      "192.168.0.100:8081": "0.100 ms",
+      "192.168.0.50": "0.958 ms"
+    },
+    "time": "2026-05-21 16:15:14"
+  },
+  "button": {
+    "data": {
+      "emergency_stop": "success",
+      "voice": "success",
+      "left_emergency_stop": "success",
+      "right_emergency_stop": "success"
+    },
+    "time": "2026-05-21 16:15:32",
+    "result": "success"
+  },
+  "anti_collision": {
+    "data": {
+      "front": null,
+      "back": "success",
+      "left": null,
+      "right": null
+    },
+    "newton": {},
+    "result": "success",
+    "time": "2026-05-15 17:11:24"
+  },
+  "speaker": {
+    "result": "pending",
+    "time": "2026-05-21 16:15:38"
+  },
+  "lift_motor": {
+    "result": "success",
+    "time": "2026-05-14 14:11:44"
+  },
+  "dynamic": {
+    "data": {
+      "直线": "success",
+      "切区": "success",
+      "曲线": "success",
+      "沟壑": "success",
+      "云台": "success",
+      "time": "2026-05-15 13:18:48"
+    },
+    "result": "success",
+    "time": "2026-05-15 13:18:48",
+    "current_step": "动态测试完成",
+    "step_status": "success",
+    "init_steps": [
+      {
+        "name": "切换手动模式",
+        "status": "success"
+      },
+      {
+        "name": "导入地图",
+        "status": "success"
+      },
+      {
+        "name": "上传任务",
+        "status": "success"
+      },
+      {
+        "name": "启用地图",
+        "status": "success"
+      },
+      {
+        "name": "同步车辆地图",
+        "status": "success"
+      },
+      {
+        "name": "手动重定位",
+        "status": "success"
+      },
+      {
+        "name": "切换自动模式",
+        "status": "success"
+      }
+    ],
+    "error": ""
+  },
+  "manual": {
+    "data": {
+      "外观检查": {
+        "result": "success",
+        "time": "2026-05-15 17:10:07"
+      },
+      "雷达高度": {
+        "result": "failed",
+        "time": "2026-05-27 13:44:28"
+      }
+    },
+    "time": "2026-05-27 13:44:28"
+  }
+}
