@@ -1,0 +1,15 @@
+{
+   "free_thresh" : 0,
+   "height" : 1003,
+   "id" : "7640a72f-53e5-11f1-9b5e-0242ac110002",
+   "image" : "7640a72f-53e5-11f1-9b5e-0242ac110002.png",
+   "name" : "7640a72f-53e5-11f1-9b5e-0242ac110002",
+   "negate" : 0,
+   "occupied_thresh" : 0.65000000000000002,
+   "originX" : -2.6980178356170654,
+   "originY" : 0,
+   "originYaw" : 0,
+   "resolution" : 0.029999999329447746,
+   "type" : "LASER_MAP",
+   "width" : 1453
+}

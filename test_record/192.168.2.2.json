@@ -1,0 +1,71 @@
+{
+  "robot_info": {
+    "sn": "2.2",
+    "tester": "彭施思",
+    "model": "TW",
+    "ip": "192.168.2.2"
+  },
+  "version": {
+    "pilot_version": "feature_v4.0.3_xjyw.260413.2-x86_64-running",
+    "rcc_base_version": "2.01",
+    "robot_version": "🚨 目录读取失败: [Errno None] Unable to connect to port 10022 on 192.168.2.2",
+    "rws_version": "🚨 rws_version 获取失败: [Errno None] Unable to connect to port 10022 on 192.168.2.2",
+    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+    "youiscript_version": "release_v2.0.0.8-x86_64-running",
+    "mos_version": "2.8.5_20260411",
+    "result": "failed",
+    "time": "2026-05-30 13:08:56"
+  },
+  "sensor": {
+    "result": "failed",
+    "data": {
+      "ks114_sensor": {
+        "前超声": null,
+        "后超声": null
+      },
+      "imu_data": {
+        "x": 0.746668934822,
+        "y": 0.665165841579,
+        "z": -0.00158633105457,
+        "w": -0.00610867515206
+      },
+      "odom": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "cpu_hz": [
+        2955.583,
+        3122.918,
+        3079.635,
+        3086.52
+      ],
+      "microphone": null,
+      "fan_board": "28 ℃"
+    },
+    "time": "2026-05-30 13:20:49"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "0.641 ms",
+      "192.168.2.63": null,
+      "192.168.2.250": "0.467 ms",
+      "192.168.0.100": "0.021 ms",
+      "192.168.2.2": "0.024 ms",
+      "192.168.2.100": "0.387 ms"
+    },
+    "time": "2026-05-30 13:21:39"
+  },
+  "button": {
+    "data": {
+      "emergency_stop": "success"
+    },
+    "time": "2026-05-30 13:21:52",
+    "result": "success"
+  },
+  "speaker": {
+    "result": "pending",
+    "time": "2026-05-30 13:21:56"
+  }
+}

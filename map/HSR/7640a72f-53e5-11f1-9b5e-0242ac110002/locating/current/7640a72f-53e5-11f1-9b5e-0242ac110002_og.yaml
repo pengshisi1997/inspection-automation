@@ -1,0 +1,7 @@
+image: /root/youibot_map/7640a72f-53e5-11f1-9b5e-0242ac110002/locating/current/7640a72f-53e5-11f1-9b5e-0242ac110002_og
+resolution: 0.060000
+origin: [0.000000, 0.000000, 0.000000]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
+

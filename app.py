@@ -1273,7 +1273,7 @@ def start_test():
                     
                 if data is None or data == '无数据':
                     test_result = 'failed'
-                    log.warn(f"传感器 {topic} 无数据")
+                    log.warning(f"传感器 {topic} 无数据")
                     break
                 
                 # 检查数据中是否包含NaN
@@ -1311,7 +1311,7 @@ def start_test():
                 if topic == 'ks114_sensor' and isinstance(data, list) and current_model != 'HSR':
                     for value in data:
                         if value <= 5:
-                            log.warn(f"传感器 ks114_sensor 值 {value} <= 5")
+                            log.warning(f"传感器 ks114_sensor 值 {value} <= 5")
                             test_result = 'failed'
                             break
                     if test_result == 'failed':
@@ -1319,7 +1319,7 @@ def start_test():
                 # 对microphone的特殊处理：必须为True才算成功（仅TW机型）
                 if topic == 'microphone' and current_model == 'TW':
                     if data is not True:
-                        log.warn(f"传感器 microphone 不是True")
+                        log.warning(f"传感器 microphone 不是True")
                         test_result = 'failed'
                         break
             
