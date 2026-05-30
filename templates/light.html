@@ -1,6 +1,9 @@
 <div class="test-ui">
     <h2>灯光测试</h2>
     <p>检测机器人的灯光是否正常工作</p>
+    {% if current_model and 'TW' in current_model %}
+        <p style="color: #e74c3c; font-weight: bold; margin-top: 10px;">使射灯照射在板材上，照射出的两组射灯轮廓垂直方向偏差＜±3cm</p>
+    {% endif %}
     
     <div class="button-info">
         <h3>测试结果</h3>
