@@ -8,17 +8,17 @@
   "dynamic": {
     "data": {
       "直线": "success",
-      "切区": "pending",
-      "横移": "failed",
-      "沟壑": "failed",
-      "45°夹角": "failed",
-      "精定位": "failed",
-      "云台": "failed",
+      "切区": "success",
+      "横移": "success",
+      "沟壑": "success",
+      "45°夹角": "success",
+      "精定位": "success",
+      "云台": "pending",
       "上集成": "failed"
     },
     "result": "running",
-    "time": "2026-05-30 14:47:34",
-    "current_step": "执行任务: 切区",
+    "time": "2026-05-30 15:21:36",
+    "current_step": "执行任务: 云台",
     "step_status": "running",
     "init_steps": [
       {
