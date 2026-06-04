@@ -265,10 +265,11 @@
     let isRefreshPaused = false;
     let hasShownDynamicError = false;
     
-    // HSR机型动态任务列表
-    const hsrDynamicTasks = ['直线', '切区', '横移', '沟壑', '45°夹角', '精定位', '云台', '上集成'];
-    // 默认机型动态任务列表
-    const defaultDynamicTasks = ['直线', '切区', '曲线', '沟壑', '云台'];
+    const configuredDynamicTasks = {% if current_model and model_config[current_model].get('dynamic') %}
+        {{ model_config[current_model]['dynamic'] | tojson }}
+    {% else %}
+        []
+    {% endif %};
 
     function getCurrentModel() {
         const robotInfo = window.robotInfo || {};
@@ -276,10 +277,8 @@
     }
     
     function getDynamicTasks() {
-        const model = getCurrentModel();
-        return model === 'HSR' ? hsrDynamicTasks : defaultDynamicTasks;
-    }
-    
+        return configuredDynamicTasks;
+    }    
     function initTaskList() {
         const taskListEl = document.getElementById('task-list');
         if (!taskListEl) return;

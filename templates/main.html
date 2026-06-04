@@ -332,6 +332,7 @@
                             <option value="柯洋洋" {% if robot_info.tester == '柯洋洋' %}selected{% endif %}>柯洋洋</option>
                             <option value="马天宇" {% if robot_info.tester == '马天宇' %}selected{% endif %}>马天宇</option>
                             <option value="雷小东" {% if robot_info.tester == '雷小东' %}selected{% endif %}>雷小东</option>
+                            <option value="曹超仁" {% if robot_info.tester == '曹超仁' %}selected{% endif %}>曹超仁</option>
                             <option value="刘梅" {% if robot_info.tester == '刘梅' %}selected{% endif %}>刘梅</option>
                             <option value="容小娟" {% if robot_info.tester == '容小娟' %}selected{% endif %}>容小娟</option>
 
@@ -341,12 +342,9 @@
                         <label style="display: block; margin-bottom: 5px; font-size: 14px; color: #666;">机型</label>
                         <select id="model-select" style="width: 100%; padding: 8px 12px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px;">
                             <option value="">请选择机型</option>
-                            <option value="MS" {% if robot_info.model == 'MS' %}selected{% endif %}>MS</option>
-                            <option value="TW" {% if robot_info.model == 'TW' %}selected{% endif %}>TW</option>
-                            <option value="MR" {% if robot_info.model == 'MR' %}selected{% endif %}>MR</option>
-                            <option value="X310" {% if robot_info.model == 'X310' %}selected{% endif %}>X310</option>
-                            <option value="X320" {% if robot_info.model == 'X320' %}selected{% endif %}>X320</option>
-                            <option value="HSR" {% if robot_info.model == 'HSR' %}selected{% endif %}>HSR</option>
+                            {% for model in model_options %}
+                            <option value="{{ model }}" {% if robot_info.model == model %}selected{% endif %}>{{ model }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     <button id="update-info-btn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">更新信息</button>
@@ -377,18 +375,7 @@
             const testItems = document.querySelectorAll('.test-item');
             testItems.forEach(item => {
                 const h3 = item.querySelector('h3');
-                const testNames = {
-                    'version': '版本检测',
-                    'sensor': '传感器检测',
-                    'ping': '网络Ping测试',
-                    'anti_collision': '防撞条检测',
-                    'speaker': '扬声器检测',
-                    'button': '按钮测试',
-                    'light': '灯光测试',
-                    'lift_motor': '升降电机测试',
-                    'dynamic': '动态测试',
-                    'manual': '人工测试',
-                };
+                const testNames = {{ test_names | tojson }};
                 if (h3 && h3.textContent.includes(testNames[testType])) {
                     const circle = item.querySelector('.status-circle');
                     if (circle) {
@@ -411,18 +398,7 @@
         // 更新所有测试项的状态
         function updateAllTestStatus(testStatus) {
             const testItems = document.querySelectorAll('.test-item');
-            const testNames = {
-                'version': '版本检测',
-                'sensor': '传感器检测',
-                'ping': '网络Ping测试',
-                'anti_collision': '防撞条检测',
-                'speaker': '扬声器检测',
-                'button': '按钮测试',
-                'light': '灯光测试',
-                'lift_motor': '升降电机测试',
-                'dynamic': '动态测试',
-                'manual': '人工测试',
-            };
+            const testNames = {{ test_names | tojson }};
             
             testItems.forEach(item => {
                 const h3 = item.querySelector('h3');
@@ -509,18 +485,7 @@
         };
         
         // 测试项名称映射
-        const testNames = {
-            'version': '版本检测',
-            'sensor': '传感器检测',
-            'ping': '网络Ping测试',
-            'anti_collision': '防撞条检测',
-            'speaker': '扬声器检测',
-            'button': '按钮测试',
-            'light': '灯光测试',
-            'lift_motor': '升降电机测试',
-            'dynamic': '动态测试',
-            'manual': '人工测试',
-        };
+        const testNames = {{ test_names | tojson }};
         
         // 测试项顺序列表
         let testOrder = {{ test_order | tojson }};

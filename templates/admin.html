@@ -303,12 +303,9 @@
                 <label for="version-model-select">选择机型</label>
                 <select id="version-model-select">
                     <option value="">请选择机型</option>
-                    <option value="MS">MS</option>
-                    <option value="MR">MR</option>
-                    <option value="TW">TW</option>
-                    <option value="X310">X310</option>
-                    <option value="X320">X320</option>
-                    <option value="HSR">HSR</option>
+                    {% for model in model_options %}
+                    <option value="{{ model }}">{{ model }}</option>
+                    {% endfor %}
                 </select>
             </div>
             
@@ -364,12 +361,9 @@
                 <label for="excel-model-select">选择机型</label>
                 <select id="excel-model-select">
                     <option value="">请选择机型</option>
-                    <option value="MS">MS</option>
-                    <option value="MR">MR</option>
-                    <option value="TW">TW</option>
-                    <option value="X310">X310</option>
-                    <option value="X320">X320</option>
-                    <option value="HSR">HSR</option>
+                    {% for model in model_options %}
+                    <option value="{{ model }}">{{ model }}</option>
+                    {% endfor %}
                 </select>
             </div>
             
@@ -394,12 +388,9 @@
                 <label for="model-select">选择机型</label>
                 <select id="model-select">
                     <option value="">请选择机型</option>
-                    <option value="MS">MS</option>
-                    <option value="MR">MR</option>
-                    <option value="TW">TW</option>
-                    <option value="X310">X310</option>
-                    <option value="X320">X320</option>
-                    <option value="HSR">HSR</option>
+                    {% for model in model_options %}
+                    <option value="{{ model }}">{{ model }}</option>
+                    {% endfor %}
                 </select>
             </div>
             

@@ -9,7 +9,7 @@
             {% for sensor in model_config[current_model]['sensor'] %}
                 <div class="sensor-item">
                     <span class="sensor-name">
-                        {% if sensor == 'odom' %}里程计{% elif sensor == 'imu_data' %}IMU{% elif sensor == 'ks114_sensor' %}超声波{% elif sensor == 'tfmini_sensor' %}防跌落{% elif sensor == 'scan_1' %}雷达{% elif sensor == 'encoder' %}编码器{% elif sensor == 'cpu_hz' %}CPU频率{% elif sensor == 'temperature' %}温度{% elif sensor == 'humidity' %}湿度{% elif sensor == 'o2' %}气体版(氧气){% elif sensor == 'co' %}气体版(氧气){% elif sensor == 'microphone' %}拾音器{% elif sensor == 'fan_board' %}风扇板{% elif sensor == 'byz06_sensor' %}噪声传感器{% elif sensor == 'fs00802_sensor' %}气体版(氧气){% else %}{{ sensor }}{% endif %}:
+                        {% if sensor == 'odom' %}里程计{% elif sensor == 'imu_data' %}IMU{% elif sensor == 'ks114_sensor' %}超声波{% elif sensor == 'tfmini_sensor' %}防跌落{% elif sensor == 'scan_1' %}雷达{% elif sensor == 'encoder' %}编码器{% elif sensor == 'cpu_hz' %}CPU频率{% elif sensor == 'temperature' %}温度{% elif sensor == 'humidity' %}湿度{% elif sensor == 'o2' %}气体版(pm值){% elif sensor == 'co' %}气体版(pm值){% elif sensor == 'microphone' %}拾音器{% elif sensor == 'fan_board' %}风扇板{% elif sensor == 'byz06_sensor' %}噪声传感器{% elif sensor == 'fs00802_sensor' %}气体版(pm值){% else %}{{ sensor }}{% endif %}:
                     </span>
                     <span class="sensor-status" id="{{ sensor | replace('_', '-') }}">未检测</span>
                 </div>
@@ -48,7 +48,7 @@
                 <span class="sensor-status" id="humidity">未检测</span>
             </div>
             <div class="sensor-item">
-                <span class="sensor-name">气体版(氧气):</span>
+                <span class="sensor-name">气体版(pm值):</span>
                 <span class="sensor-status" id="o2">未检测</span>
             </div>
             <div class="sensor-item" style="display: none;">

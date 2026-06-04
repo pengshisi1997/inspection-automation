@@ -1,28 +1,69 @@
 {
   "robot_info": {
-    "sn": "SNH202510025",
-    "tester": "雷小东",
-    "model": "MS",
+    "sn": "69",
+    "tester": "请选择测试人员",
+    "model": "MR",
     "ip": "192.168.16.69"
   },
   "version": {
-    "pilot_version": "❌ 请求异常: HTTPConnectionPool(host='192.168.16.69', port=8080): Max retries exceeded with url: /api/v3/logo (Caused by ConnectTimeoutError(<HTTPConnection(host='192.168.16.69', port=8080) at 0x1d0163802d0>, 'Connection to 192.168.16.69 timed out. (connect timeout=5)'))",
-    "compass_version": "🚨 Compass_version 获取失败: timed out",
-    "mirror_system": "🚨 SSH连接失败: timed out",
-    "rcc_base_version": null,
-    "result": "failed",
-    "time": "2026-03-29 14:48:43"
+    "pilot_version": "YouiPilot-release_v3.5.2_IDC_13-linux-amd64.deb",
+    "compass_version": "YOUICompass-4.6.0-IDC03-20250813",
+    "mirror_system": "Pilot3.7.0_2022-5-18--img",
+    "rws_version": "YOUIRWS_v2.0.2",
+    "result": "success",
+    "time": "2026-06-04 14:49:22"
   },
   "sensor": {
-    "result": "failed",
+    "result": "success",
     "data": {
-      "ks114_sensor": null,
-      "imu_data": null,
-      "encoder": null,
-      "odom": null,
-      "cpu_hz": null,
+      "ks114_sensor": [
+        108,
+        108,
+        108,
+        108
+      ],
+      "imu_data": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "w": 1.0
+      },
+      "encoder": [
+        0,
+        0
+      ],
+      "odom": {
+        "x": 0.00532064965264,
+        "y": 6.16256920101e-05,
+        "z": 0.0
+      },
+      "tfmini_sensor": [
+        18,
+        20
+      ],
+      "byz06_sensor": 64.6999969482,
+      "fs00802_sensor": 76.0,
+      "cpu_hz": [
+        2836.694,
+        2850.495,
+        2824.27,
+        2851.325
+      ],
       "scan_1": "大量数据"
     },
-    "time": "2026-03-29 14:49:39"
+    "time": "2026-06-04 16:21:13"
+  },
+  "ping": {
+    "result": "success",
+    "data": {
+      "192.168.0.8": "1.470 ms",
+      "192.168.2.63": "34.400 ms",
+      "192.168.2.250": "0.469 ms",
+      "192.168.0.100": "0.021 ms",
+      "192.168.2.2": "0.022 ms",
+      "192.168.0.100:8081": "0.100 ms",
+      "192.168.0.50": "0.602 ms"
+    },
+    "time": "2026-06-04 15:07:24"
   }
 }

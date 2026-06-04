@@ -1,168 +1,95 @@
 {
   "robot_info": {
-    "sn": "18.160",
+    "sn": "202505060",
     "tester": "彭施思",
     "model": "TW",
     "ip": "192.168.17.160"
   },
   "version": {
-    "pilot_version": "feature_v4.0.3_xjyw.260413.2-x86_64-running",
-    "rcc_base_version": "2.01",
-    "robot_version": "robot-v1.1.2",
+    "pilot_version": "release_v4.0.8_xjyw.260528.1-x86_64-running",
+    "rcc_base_version": null,
+    "robot_version": "robot-v1.3.0_202605301834",
     "rws_version": "v2.0.2",
     "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
     "youiscript_version": "release_v2.0.0.8-x86_64-running",
     "mos_version": "2.8.5_20260411",
-    "result": "success",
-    "time": "2026-05-14 12:55:30"
-  },
-  "manual": {
-    "data": {
-      "老化数据": {
-        "result": "success",
-        "time": "2026-05-14 13:01:08"
-      },
-      "超声波避障": {
-        "result": "success",
-        "time": "2026-05-14 13:01:09"
-      },
-      "外观检查": {
-        "result": "success",
-        "time": "2026-05-16 16:07:17"
-      },
-      "铭牌信息检查": {
-        "result": "success",
-        "time": "2026-05-16 16:07:19"
-      },
-      "ECN变更检查": {
-        "result": "success",
-        "time": "2026-05-16 16:07:20"
-      },
-      "开关机": {
-        "result": "success",
-        "time": "2026-05-16 16:07:21"
-      },
-      "外网口": {
-        "result": "success",
-        "time": "2026-05-16 16:07:25"
-      },
-      "RCC_base调试口": {
-        "result": "success",
-        "time": "2026-05-16 16:07:27"
-      },
-      "手柄遥控": {
-        "result": "success",
-        "time": "2026-05-16 16:07:28"
-      },
-      "散热风扇": {
-        "result": "success",
-        "time": "2026-05-16 16:07:32"
-      },
-      "灯带": {
-        "result": "success",
-        "time": "2026-05-16 16:07:33"
-      },
-      "喇叭音量": {
-        "result": "success",
-        "time": "2026-05-16 16:23:32"
-      },
-      "VNC测试": {
-        "result": "success",
-        "time": "2026-05-16 16:23:38"
-      },
-      "语音对讲模块": {
-        "result": "success",
-        "time": "2026-05-16 16:23:38"
-      },
-      "部署任务": {
-        "result": "success",
-        "time": "2026-05-16 16:23:40"
-      },
-      "有线充电": {
-        "result": "success",
-        "time": "2026-05-16 16:23:41"
-      },
-      "无线充电": {
-        "result": "success",
-        "time": "2026-05-16 16:23:42"
-      },
-      "精度测试": {
-        "result": "success",
-        "time": "2026-05-16 16:23:48"
-      },
-      "斜坡驻车": {
-        "result": "success",
-        "time": "2026-05-16 16:23:50"
-      }
-    },
-    "time": "2026-05-16 16:24:06",
-    "result": "success"
+    "result": "failed",
+    "time": "2026-06-03 16:43:09"
   },
   "sensor": {
-    "result": "failed",
+    "result": "success",
     "data": {
       "ks114_sensor": {
-        "前超声": "D0 06 83 59",
-        "后超声": "D2 0D 72 51"
+        "前超声": "D0 03 52 25",
+        "后超声": "D2 03 C1 96"
       },
       "imu_data": {
-        "x": 0.00616555241868,
-        "y": 0.00476995715871,
-        "z": -0.0676701962948,
-        "w": 0.997677266598
+        "x": -0.00375280505978,
+        "y": -0.00417247461155,
+        "z": -0.992548644543,
+        "w": 0.121719539165
       },
       "odom": {
-        "x": 1.15913380201e-05,
+        "x": 0.0,
         "y": 0.0,
         "z": 0.0
       },
       "cpu_hz": [
-        4076.802,
-        4091.638,
-        4071.796,
-        4073.068
+        4048.725,
+        4065.872,
+        4079.374,
+        4057.095
       ],
-      "temperature": "NaN",
-      "humidity": "NaN",
-      "o2": 20.989999771118164,
-      "co": 1.0,
+      "temperature": 28.853286743164062,
+      "humidity": 74.83329772949219,
+      "o2": 20.950000762939453,
+      "co": 0.0,
       "microphone": true,
-      "fan_board": "27 ℃"
+      "fan_board": "29 ℃"
     },
-    "time": "2026-05-14 13:52:43"
-  },
-  "speaker": {
-    "result": "success",
-    "time": "2026-05-16 15:55:36"
+    "time": "2026-06-03 16:47:59"
   },
   "ping": {
     "result": "success",
     "data": {
-      "192.168.0.8": "0.401 ms",
-      "192.168.2.63": "0.792 ms",
-      "192.168.2.250": "0.379 ms",
+      "192.168.0.8": "0.403 ms",
+      "192.168.2.63": "1.310 ms",
+      "192.168.2.250": "0.395 ms",
       "192.168.0.100": "0.022 ms",
-      "192.168.2.2": "0.015 ms",
-      "192.168.2.100": "0.404 ms"
+      "192.168.2.2": "0.018 ms",
+      "192.168.2.100": "0.329 ms"
     },
-    "time": "2026-05-16 15:55:29"
+    "time": "2026-06-03 16:48:22"
   },
   "button": {
     "data": {
-      "emergency_stop": null,
+      "emergency_stop": "success",
       "left_emergency_stop": null,
       "right_emergency_stop": null,
+      "chassis_left_stop": null,
+      "chassis_right_stop": null,
+      "integrated_left_stop": null,
+      "integrated_right_stop": null,
+      "unlock_brake": null,
       "voice": null
     },
     "result": "success",
-    "time": "2026-05-16 15:55:34"
+    "time": "2026-06-03 16:58:48"
+  },
+  "speaker": {
+    "result": "success",
+    "time": "2026-06-03 17:04:17"
   },
   "light": {
     "data": {
       "red": "success",
-      "back_light": "success"
+      "blue": "success",
+      "green": "success",
+      "front_light": "success",
+      "back_light": "success",
+      "charge_relay": "success"
     },
-    "time": "2026-05-16 16:05:31",
+    "time": "2026-06-03 17:06:18",
     "result": "success"
   },
   "integrated": {
@@ -180,7 +107,52 @@
     },
     "error": "",
     "result": "success",
-    "time": "2026-05-16 17:14:46",
+    "time": "2026-06-03 17:07:47",
     "current_task": "Auto_focusing"
+  },
+  "manual": {
+    "data": {
+      "散热风扇": {
+        "result": "success",
+        "time": "2026-06-03 17:09:08"
+      },
+      "VNC测试": {
+        "result": "success",
+        "time": "2026-06-03 17:11:38"
+      },
+      "开关机": {
+        "result": "success",
+        "time": "2026-06-03 17:17:52"
+      },
+      "外网口": {
+        "result": "success",
+        "time": "2026-06-03 18:22:11"
+      },
+      "RCC_base调试口": {
+        "result": "success",
+        "time": "2026-06-03 18:22:29"
+      },
+      "部署任务": {
+        "result": "success",
+        "time": "2026-06-03 18:52:43"
+      },
+      "手柄遥控": {
+        "result": "success",
+        "time": "2026-06-03 18:54:47"
+      },
+      "喇叭音量": {
+        "result": "success",
+        "time": "2026-06-03 18:55:57"
+      },
+      "语音对讲模块": {
+        "result": "success",
+        "time": "2026-06-03 19:11:16"
+      },
+      "有线充电": {
+        "result": "success",
+        "time": "2026-06-03 19:13:11"
+      }
+    },
+    "time": "2026-06-03 19:13:11"
   }
 }

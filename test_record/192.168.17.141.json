@@ -1,74 +1,154 @@
 {
   "robot_info": {
-    "sn": "",
+    "sn": "SNH202505041",
     "tester": "雷小东",
-    "model": "MS",
+    "model": "TW",
     "ip": "192.168.17.141"
   },
   "light": {
     "data": {
       "back_light": "success",
-      "front_light": "success"
+      "front_light": "success",
+      "red": "success",
+      "blue": "success",
+      "green": "success",
+      "charge_relay": "success"
     },
-    "time": "2026-05-08 13:58:50"
+    "time": "2026-06-03 18:53:56",
+    "result": "success"
   },
   "version": {
-    "pilot_version": "feature_v4.0.3_xjyw.260413.2-x86_64-running",
-    "rcc_base_version": "2.01",
-    "robot_version": "robot-v1.1.2",
+    "pilot_version": "release_v4.0.8_xjyw.260528.1-x86_64-running",
+    "rcc_base_version": null,
+    "robot_version": "robot-v1.3.0_202605301834",
     "rws_version": "v2.0.2",
     "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
     "youiscript_version": "release_v2.0.0.8-x86_64-running",
     "mos_version": "2.8.5_20260411",
-    "result": "success",
-    "time": "2026-05-08 13:59:08"
+    "result": "failed",
+    "time": "2026-06-03 18:17:16"
   },
   "sensor": {
-    "result": "failed",
+    "result": "success",
     "data": {
       "ks114_sensor": {
-        "front": {
-          "d0 02 B0": "D0 16 19 FF"
-        },
-        "back": {
-          "d2 02 B0": "D2 16 19 01"
-        }
+        "前超声": "D0 04 82 56",
+        "后超声": "D2 03 4F 24"
       },
       "imu_data": {
-        "x": 0.00138405524194,
-        "y": 0.00885467976332,
-        "z": -0.0345830433071,
-        "w": 0.999361634254
+        "x": 0.00451972614974,
+        "y": 0.0146530913189,
+        "z": -0.00491211470217,
+        "w": 0.999870359898
       },
       "odom": {
-        "x": 20.3017869959,
+        "x": 0.0,
         "y": 0.0,
         "z": 0.0
       },
       "cpu_hz": [
-        3989.957,
-        4009.081,
-        3986.83,
-        4006.578
+        4140.816,
+        4212.354,
+        4130.924,
+        4159.138
       ],
-      "temperature": "NaN",
-      "humidity": "NaN",
-      "o2": 21.010000228881836,
+      "temperature": 29.189743041992188,
+      "humidity": 73.5362777709961,
+      "o2": 20.790000915527344,
       "co": 0.0,
-      "microphone": true
+      "microphone": true,
+      "fan_board": "28 ℃"
     },
-    "time": "2026-05-08 14:00:24"
+    "time": "2026-06-03 18:17:40"
   },
   "ping": {
     "result": "success",
     "data": {
-      "192.168.0.8": "0.433 ms",
-      "192.168.2.63": "0.830 ms",
-      "192.168.2.250": "0.375 ms",
-      "192.168.0.100": "0.018 ms",
-      "192.168.2.2": "0.020 ms",
-      "192.168.2.100": "0.498 ms"
+      "192.168.0.8": "0.669 ms",
+      "192.168.2.63": "0.899 ms",
+      "192.168.2.250": "0.379 ms",
+      "192.168.0.100": "0.023 ms",
+      "192.168.2.2": "0.027 ms",
+      "192.168.2.100": "0.398 ms"
     },
-    "time": "2026-05-08 14:19:22"
+    "time": "2026-06-03 18:18:33"
+  },
+  "button": {
+    "data": {
+      "emergency_stop": "success"
+    },
+    "time": "2026-06-03 18:52:57",
+    "result": "success"
+  },
+  "speaker": {
+    "result": "success",
+    "time": "2026-06-03 18:53:03"
+  },
+  "integrated": {
+    "data": {
+      "light_photo": "success",
+      "light_video": "success",
+      "thermal_photo": "success",
+      "thermal_video": "success",
+      "thermal_Temperature": "success",
+      "light_PTZ": "success",
+      "light_point": "success",
+      "thermal_point": "success",
+      "Manual_focusing": "success",
+      "Auto_focusing": "success"
+    },
+    "error": "",
+    "result": "success",
+    "time": "2026-06-03 18:56:57",
+    "current_task": "Auto_focusing"
+  },
+  "manual": {
+    "data": {
+      "开关机": {
+        "result": "success",
+        "time": "2026-06-03 19:12:36"
+      },
+      "外网口": {
+        "result": "success",
+        "time": "2026-06-03 19:13:01"
+      },
+      "RCC_base调试口": {
+        "result": "success",
+        "time": "2026-06-03 19:14:07"
+      },
+      "手柄遥控": {
+        "result": "success",
+        "time": "2026-06-03 19:16:02"
+      },
+      "散热风扇": {
+        "result": "success",
+        "time": "2026-06-03 19:16:14"
+      },
+      "喇叭音量": {
+        "result": "success",
+        "time": "2026-06-03 19:16:19"
+      },
+      "VNC测试": {
+        "result": "success",
+        "time": "2026-06-03 19:16:23"
+      },
+      "语音对讲模块": {
+        "result": "success",
+        "time": "2026-06-03 19:37:28"
+      },
+      "部署任务": {
+        "result": "success",
+        "time": "2026-06-03 19:37:31"
+      },
+      "有线充电": {
+        "result": "success",
+        "time": "2026-06-03 19:37:34"
+      },
+      "无线充电": {
+        "result": "success",
+        "time": "2026-06-03 19:37:36"
+      }
+    },
+    "time": "2026-06-03 19:37:36"
   }
 }

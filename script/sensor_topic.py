@@ -262,31 +262,51 @@ class RosTopicReader:
         return float(match.group(1))
     
     def _parse_fs00802(self, output):
-        """解析 fs00802 气体传感器数据，只获取 O2 字段"""
-        match = re.search(r'O2:\s*([-0-9.e]+)', output)
+        """解析 fs00802 气体传感器数据，只获取 PM2_5 字段"""
+        match = re.search(r'PM2_5:\s*([-0-9.e]+)', output)
         if not match:
             return None
         return float(match.group(1))
     
     def get_all_data(self):
-        """使用多进程获取所有话题的数据
+        """获取所有话题的数据
         
         Returns:
             dict: 包含所有话题数据的字典
         """
-        print("=== 多进程获取所有话题数据 ===")
+        print("=== 获取所有话题数据 ===")
         start_time = time.time()
         
-        # 准备进程参数
-        process_args = [(topic, key, self.ip, self.username, self.password) for topic, key in self.topics]
+        result_dict = {}
         
-        # 创建进程池
-        with multiprocessing.Pool(processes=len(self.topics)) as pool:
-            # 并行执行
-            results = pool.map(self._get_single_topic_data, process_args)
-        
-        # 整理结果
-        result_dict = {key: data for key, data in results}
+        # 先尝试单进程方式（更可靠，特别是在Windows上）
+        try:
+            print("  使用单进程方式获取数据...")
+            for topic, key in self.topics:
+                print(f"  正在获取 {key} 数据...")
+                key_result, data = self._get_single_topic_data((topic, key, self.ip, self.username, self.password))
+                result_dict[key_result] = data
+        except Exception as e:
+            print(f"  单进程方式失败: {e}")
+            import traceback
+            print(f"  堆栈: {traceback.format_exc()}")
+            
+            # 如果单进程失败，尝试回退到多进程（仅在非Windows上）
+            if sys.platform != 'win32':
+                try:
+                    print("  尝试使用多进程方式...")
+                    # 准备进程参数
+                    process_args = [(topic, key, self.ip, self.username, self.password) for topic, key in self.topics]
+                    
+                    # 创建进程池
+                    with multiprocessing.Pool(processes=len(self.topics)) as pool:
+                        # 并行执行
+                        results = pool.map(self._get_single_topic_data, process_args)
+                    
+                    # 整理结果
+                    result_dict = {key: data for key, data in results}
+                except Exception as e2:
+                    print(f"  多进程方式也失败: {e2}")
         
         # 读取 CPU 频率
         cpu_hz = self._read_cpu_hz()

@@ -1,34 +1,43 @@
-from flask import Flask, render_template, request, jsonify, session, send_file, Response, send_from_directory
+from flask import Flask, render_template, request, jsonify, session, send_file, send_from_directory
 import json
 import os
-import sys
 import threading
 import uuid
 import re
 from datetime import datetime
 from log import Logger
 from script.public import download_latest_image
+from config.model_config import (
+    DEFAULT_MODEL,
+    INTEGRATED_TASK_DESCRIPTIONS,
+    MODEL_CONFIG,
+    MODEL_OPTIONS,
+    TEST_NAMES,
+    TEST_ORDER,
+    VERSION_STANDARDS,
+    get_version_fields,
+)
 
-try:
-    from openpyxl import load_workbook
-except ImportError:
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
-    from openpyxl import load_workbook
-
-import os
-print("当前工作目录:", os.getcwd())
-print("app.py所在目录:", os.path.dirname(os.path.abspath(__file__)))
 
 # 添加脚本目录到Python路径
-# sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'script'))
 
 log = Logger()
 
 app = Flask(__name__, static_folder='.', static_url_path='/')
+from routes.admin import admin_bp
+app.register_blueprint(admin_bp)
 
 
 app.secret_key = 'your-secret-key'  # 设置secret key用于session加密
+
+
+@app.context_processor
+def inject_shared_config():
+    return {
+        'model_options': MODEL_OPTIONS,
+        'test_names': TEST_NAMES,
+    }
+
 
 @app.errorhandler(Exception)
 def handle_exception(e):
@@ -39,7 +48,6 @@ def handle_exception(e):
     return jsonify({'success': False, 'error': error_msg})
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_MODEL = 'MS'
 
 
 def resolve_model_file(base_dir, model, filename):
@@ -70,47 +78,6 @@ def load_manual_tests(model):
     return manual_tests
 
 
-MS_VERSION_ITEMS = ['pilot_version', 'compass_version', 'rcc_base_version', 'mirror_system']
-MR_VERSION_ITEMS = ['pilot_version', 'compass_version', 'mirror_system', 'rws_version']
-TW_VERSION_ITEMS = ['pilot_version', 'rcc_base_version', 'robot_version', 'rws_version', 'mirror_system', 'youiscript_version', 'mos_version']
-HSR_VERSION_ITEMS = ['pilot_version', 'compass_version', 'mirror_system', 'mos_version_hsr', 'mirror_system_hsr', 'rcc_base_version']
-
-MS_VERSION_STANDARDS = {
-    "pilot_version": "release/v3.8.0_xjyw_v1.5.21_20260313",
-    "compass_version": "YOUICompassSetup-4.7.4-xjyw-V4.2.0-20260427",
-    "rcc_base_version": "2.01",
-    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
-}
-
-MR_VERSION_STANDARDS = {
-    "pilot_version": "YouiPilot-release_v3.5.2_IDC——10-linux-amd64-20250729.deb",
-    "compass_version": "YOUICompass-4.6.0-IDC03-20250225.zip",
-    "mirror_system": "Pilot3.7.0_2022-5-18--img",
-    "rws_version": "YOUIRWS_v2.0.2"
-}
-
-HSR_VERSION_STANDARDS = {
-    "pilot_version": "v4.0.6_ex100.251028.1",
-    "compass_version": "YOUICompassSetup-4.7.4-xjyw-V3.0-bl-20251229",
-    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
-    "mos_version_hsr": "2.6.21_ARIS",
-    "mirror_system_hsr": "Pilot-4.0.3-desktop-2025-11-27.img",
-    "rcc_base_version": "2.01",
-}
-
-TW_VERSION_STANDARDS = {
-    "pilot_version": "feature_v4.0.3_xjyw.260413.2-x86_64-running",
-    "rcc_base_version": "2.01",
-    "robot_version": "robot-v1.1.2",
-    "rws_version": "v2.0.2",
-    "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
-    "youiscript_version": "release_v2.0.0.8-x86_64-running",
-    "mos_version": "2.8.5_20260411",
-}
-
-
-
-# 读取指定IP的测试结果文件
 def read_result_file(ip):
     # 确保test_record目录存在
     os.makedirs('test_record', exist_ok=True)
@@ -121,7 +88,7 @@ def read_result_file(ip):
         with open(filename, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
-        print(f"读取{filename}文件失败: {e}")
+        log.error(f"读取{filename}文件失败: {e}")
         return {}
 
 # 写入指定IP的测试结果文件
@@ -134,7 +101,7 @@ def write_result_file(ip, data):
             json.dump(data, f, ensure_ascii=False, indent=2)
         return True
     except Exception as e:
-        print(f"写入{filename}文件失败: {e}")
+        log.error(f"写入{filename}文件失败: {e}")
         return False
 
 # 存储测试状态
@@ -166,96 +133,13 @@ integrated_workers = {}
 integrated_worker_lock = threading.Lock()
 
 # 集成测试子任务描述
-integrated_task_descriptions = {
-    'light_photo': '可见光拍照',
-    'light_video': '可见光录像',
-    'thermal_photo': '热成像拍照',
-    'thermal_video': '热成像录像',
-    'light_PTZ': '云台动作',
-    'light_point': '云台移动变倍至预置点10',
-    'thermal_point': '云台移动变倍至预置点11',
-    'Manual_focusing': '云台变成手动聚焦模式',
-    'Auto_focusing': '云台变成自动聚焦模式',
-    'thermal_Temperature': '测温任务'
-}
-
-
-
-# 版本标准配置：定义不同机型的标准版本号
-version_standards = {
-    'MS': dict(MS_VERSION_STANDARDS),
-    'MR': dict(MR_VERSION_STANDARDS),
-    'X310': dict(MS_VERSION_STANDARDS),
-    'X320': dict(MS_VERSION_STANDARDS),
-    'TW': dict(TW_VERSION_STANDARDS),
-    'HSR': dict(HSR_VERSION_STANDARDS),
-}
-
-# 机型配置字典：定义不同机型对应的测试项和子项
-model_config = {
-    'MS': {
-        'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'dynamic', 'manual'],
-        'button': ['emergency_stop'],
-        'light': ['red', 'blue', 'green'],
-        'anti_collision': ['front', 'back'],
-        'version': list(MS_VERSION_ITEMS),
-        'sensor': ['odom', 'imu_data', 'ks114_sensor', 'encoder', 'scan_1', 'cpu_hz'],
-        'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.0.100:8081']
-    },
-    'MR': {
-        'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'lift_motor', 'dynamic', 'manual'],
-        'button': ['left_emergency_stop', 'right_emergency_stop', 'voice'],
-        'light': [],
-        'anti_collision': ['front', 'back'],
-        'version': list(MR_VERSION_ITEMS),
-        'sensor': ['odom', 'imu_data', 'ks114_sensor', 'tfmini_sensor', 'encoder', 'scan_1', 'cpu_hz', 'byz06_sensor', 'fs00802_sensor'],
-        'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.0.100:8081', '192.168.0.50']
-    },
-    'X310': {
-        'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'dynamic', 'manual'],
-        'button': ['emergency_stop', 'voice'],
-        'light': ['red', 'blue', 'green'],
-        'anti_collision': ['front', 'back'],
-        'version': list(MS_VERSION_ITEMS),
-        'sensor': ['odom', 'imu_data', 'ks114_sensor', 'tfmini_sensor', 'encoder', 'scan_1', 'cpu_hz'],
-        'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.0.100:8081']
-    },
-    'X320': {
-        'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'dynamic', 'manual'],
-        'button': ['emergency_stop', 'voice'],
-        'light': ['red', 'blue', 'green'],
-        'anti_collision': ['front', 'back'],
-        'version': list(MS_VERSION_ITEMS),
-        'sensor': ['odom', 'imu_data', 'ks114_sensor', 'tfmini_sensor', 'encoder', 'scan_1', 'cpu_hz'],
-        'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.0.100:8081']
-    },
-    'TW': {
-                'test_items': ['version', 'sensor', 'ping', 'button',  'speaker', 'light', 'integrated', 'manual'],
-                'button': ['emergency_stop'],
-                'light': ['red', 'blue', 'green', 'front_light', 'back_light', 'charge_relay'],
-                'anti_collision': ['front', 'back'],
-                'version': list(TW_VERSION_ITEMS),
-                'sensor': ['odom', 'imu_data', 'ks114_sensor', 'cpu_hz', 'temperature', 'humidity', 'o2', 'microphone', 'fan_board'],
-                'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2',"192.168.2.100"],
-                'integrated': ['light_photo', 'light_video', 'thermal_photo', 'thermal_video', 'thermal_Temperature', 'light_PTZ', 'light_point', 'thermal_point', 'Manual_focusing', 'Auto_focusing']
-            },
-    'HSR': {
-        'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'dynamic', 'manual'],
-        'button': ['chassis_left_stop', 'chassis_right_stop', 'integrated_left_stop', 'integrated_right_stop', 'unlock_brake'],
-        'light': ['red', 'blue', 'green'],
-        'anti_collision': ['front', 'back', 'left', 'right'],
-        'version': list(HSR_VERSION_ITEMS),
-        'sensor': ['odom', 'imu_data', 'encoder', 'scan_1', 'cpu_hz'],
-        'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.88', '192.168.2.90', '192.168.2.250', '192.168.2.2', '192.168.2.89', '192.168.0.100:8081']
-    }
-}
+integrated_task_descriptions = INTEGRATED_TASK_DESCRIPTIONS
+model_config = MODEL_CONFIG
+version_standards = VERSION_STANDARDS
 
 
 def get_version_fields_by_model(model):
-    config = model_config.get(model or '')
-    if config and config.get('version'):
-        return list(config['version'])
-    return list(MS_VERSION_ITEMS)
+    return get_version_fields(model)
 
 
 def build_report_filters(data):
@@ -277,7 +161,7 @@ def build_report_filters(data):
     return filters
 
 # 测试项顺序列表（默认所有机型都有的测试项）
-test_order = ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'lift_motor', 'dynamic', 'integrated', 'manual']
+test_order = list(TEST_ORDER)
 
 
 
@@ -604,7 +488,7 @@ def test_anti_collision():
                 topic="/robot/all_status",
                 timeout=2
             )
-            
+
             if strip_type == 'front':
                 v = reader.get_one_frame("front_safety_edge")
                 if v is None:
@@ -631,6 +515,15 @@ def test_anti_collision():
                         v = reader.get_one_frame("safety_edge_right")
             else:
                 return jsonify({'success': False, 'error': '无效的防撞条类型'})
+            
+            # 为MR机型增加stop_status字段检测，或的逻辑
+            if current_model == 'MR':
+                stop_status = reader.get_one_frame("stop_status")
+                log.info(f"MR机型检测 - 防撞条值: {v}, stop_status值: {stop_status}")
+                # 如果stop_status为True（1），则v设为1
+                if stop_status == 1:
+                    v = 1
+                    log.info(f"MR机型stop_status为True，防撞条结果设为1")
         
         if v is None:
             log.error(f"防撞条 {strip_type} ({current_model}车型) 未找到对应的数据")
@@ -687,17 +580,13 @@ def test_anti_collision():
 
 @app.route('/test_button', methods=['POST'])
 def test_button():
-    print("========== 测试按钮请求 ==========")
-    print(f"请求数据: {request.json}")
     bound_ip = session.get('bound_ip')
-    print(f"绑定IP: {bound_ip}")
     if not bound_ip:
         return jsonify({'success': False, 'error': '未绑定IP'})
     
     button_type = request.json.get('button_type')
     check_only = request.json.get('check_only', False)
     save_result = request.json.get('save_result', False)
-    print(f"按钮类型: {button_type}, check_only: {check_only}, save_result: {save_result}")
     
     if not button_type:
         return jsonify({'success': False, 'error': '缺少按钮类型'})
@@ -706,7 +595,6 @@ def test_button():
         v = None
         if button_type in ['emergency_stop', 'left_emergency_stop', 'right_emergency_stop', 'chassis_left_stop', 'chassis_right_stop', 'integrated_left_stop', 'integrated_right_stop']:
             # 测试急停按钮（包括左急停、右急停、底盘左右急停、上集成左右急停）
-            print(f"开始测试急停按钮: {button_type}")
             from script.robot_allstatus import SingleTopicOnceReader
             reader = SingleTopicOnceReader(
                 ip=bound_ip,
@@ -714,10 +602,8 @@ def test_button():
                 timeout=2
             )
             v = reader.get_one_frame("stop_button")
-            print(f"获取到的按钮值: {v}")
         elif button_type == 'voice':
             # 测试语音按钮
-            print(f"开始测试语音按钮")
             from script.robot_allstatus import SingleTopicOnceReader
             reader = SingleTopicOnceReader(
                 ip=bound_ip,
@@ -725,10 +611,8 @@ def test_button():
                 timeout=2
             )
             v = reader.get_one_frame("talkback_state")
-            print(f"获取到的语音按钮值: {v}")
         elif button_type == 'unlock_brake':
             # 测试解抱闸按钮
-            print(f"开始测试解抱闸按钮")
             from script.robot_allstatus import SingleTopicOnceReader
             reader = SingleTopicOnceReader(
                 ip=bound_ip,
@@ -736,14 +620,12 @@ def test_button():
                 timeout=2
             )
             v = reader.get_one_frame("unlock_brake")
-            print(f"获取到的解抱闸按钮值: {v}")
         else:
             return jsonify({'success': False, 'error': '无效的按钮类型'})
         
         if check_only:
             # 只返回当前按钮状态，即使值为None也返回成功状态
             result = {'success': True, 'value': v}
-            print(f"check_only模式返回: {result}")
             return jsonify(result)
         elif save_result:
             # 保存测试结果为成功
@@ -757,7 +639,6 @@ def test_button():
             button_info['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             results['button'] = button_info
             write_result_file(bound_ip, results)
-            print(f"save_result模式返回成功")
             return jsonify({'success': True, 'result': result})
         else:
             # 原始测试逻辑（保持兼容）
@@ -774,15 +655,12 @@ def test_button():
             button_info['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             results['button'] = button_info
             write_result_file(bound_ip, results)
-            print(f"普通测试模式返回: {result}")
             return jsonify({'success': True, 'result': result})
     except Exception as e:
         log.error(f"按钮测试出错: {str(e)}")
         import traceback
         error_trace = traceback.format_exc()
         log.error(f"堆栈: {error_trace}")
-        print(f"按钮测试异常: {str(e)}")
-        print(f"堆栈: {error_trace}")
         # 对于check_only模式，即使出错也返回成功状态，但value为None
         if check_only:
             return jsonify({'success': True, 'value': None})
@@ -1178,7 +1056,6 @@ def start_test():
     
     # 版本检测的特殊处理
     if test_type == 'version':
-        print("开始版本检测...")
         if not bound_ip:
             return jsonify({'success': False, 'error': '请先绑定IP地址'})
         
@@ -1271,6 +1148,8 @@ def start_test():
                 if model_sensors and topic not in model_sensors:
                     continue
                     
+                log.info(f"正在检查传感器: {topic}, 数据: {data}")
+                
                 if data is None or data == '无数据':
                     test_result = 'failed'
                     log.warning(f"传感器 {topic} 无数据")
@@ -1310,8 +1189,7 @@ def start_test():
                 # 对ks114_sensor的特殊处理：每个元素大于0才算成功（仅非HSR机型）
                 if topic == 'ks114_sensor' and isinstance(data, list) and current_model != 'HSR':
                     for value in data:
-                        if value <= 5:
-                            log.warning(f"传感器 ks114_sensor 值 {value} <= 5")
+                        if value <= 2:
                             test_result = 'failed'
                             break
                     if test_result == 'failed':
@@ -2234,506 +2112,6 @@ def get_temperature_api():
         log.error(f"堆栈: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': f"{str(e)}"})
 
-
-@app.route('/admin')
-def admin():
-    return render_template('admin.html')
-
-@app.route('/admin/get_testcases', methods=['GET'])
-def get_testcases():
-    model_filter = request.args.get('model', '')
-    testcases = []
-    
-    models = ['MS', 'MR', 'TW', 'X310', 'X320', 'HSR']
-    
-    for model in models:
-        if model_filter and model != model_filter:
-            continue
-        
-        config_path = os.path.join('config', model, 'manual_tests.json')
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    for tc in data.get('manual_tests', []):
-                        testcases.append({
-                            'model': model,
-                            'name': tc.get('name', ''),
-                            'description': tc.get('description', ''),
-                            'expected_result': tc.get('expected_result', ''),
-                            'confirm_content': tc.get('confirm_content', ''),
-                            'image': tc.get('image', '')
-                        })
-            except Exception as e:
-                log.error(f"读取{config_path}失败: {str(e)}")
-    
-    return jsonify({'success': True, 'testcases': testcases})
-
-@app.route('/admin/upload_testcase', methods=['POST'])
-def upload_testcase():
-    try:
-        model = request.form.get('model')
-        name = request.form.get('name')
-        description = request.form.get('description')
-        expected_result = request.form.get('expected_result', '')
-        confirm_content = request.form.get('confirm_content', '')
-        image = request.files.get('image')
-        
-        if not model or not name or not description:
-            return jsonify({'success': False, 'error': '缺少必要参数'})
-        
-        config_path = os.path.join('config', model, 'manual_tests.json')
-        
-        if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-        else:
-            data = {'manual_tests': []}
-        
-        new_testcase = {
-            'name': name,
-            'description': description.split('\n') if '\n' in description else description,
-            'expected_result': expected_result,
-            'confirm_content': confirm_content
-        }
-        
-        if image:
-            ext = os.path.splitext(image.filename)[1]
-            unique_name = str(uuid.uuid4()) + ext
-            image_path = os.path.join('static', 'images', unique_name)
-            image.save(image_path)
-            new_testcase['image'] = unique_name
-        
-        data['manual_tests'].append(new_testcase)
-        
-        with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        
-        return jsonify({'success': True})
-    
-    except Exception as e:
-        log.error(f"上传测试用例失败: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/admin/update_testcase', methods=['POST'])
-def update_testcase():
-    try:
-        model = request.form.get('model')
-        index = int(request.form.get('index'))
-        name = request.form.get('name')
-        description = request.form.get('description')
-        expected_result = request.form.get('expected_result', '')
-        confirm_content = request.form.get('confirm_content', '')
-        image = request.files.get('image')
-        
-        if not model or name is None or description is None:
-            return jsonify({'success': False, 'error': '缺少必要参数'})
-        
-        config_path = os.path.join('config', model, 'manual_tests.json')
-        
-        if not os.path.exists(config_path):
-            return jsonify({'success': False, 'error': '配置文件不存在'})
-        
-        with open(config_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        
-        if index < 0 or index >= len(data.get('manual_tests', [])):
-            return jsonify({'success': False, 'error': '索引超出范围'})
-        
-        data['manual_tests'][index]['name'] = name
-        data['manual_tests'][index]['description'] = description.split('\n') if '\n' in description else description
-        data['manual_tests'][index]['expected_result'] = expected_result
-        data['manual_tests'][index]['confirm_content'] = confirm_content
-        
-        if image:
-            ext = os.path.splitext(image.filename)[1]
-            unique_name = str(uuid.uuid4()) + ext
-            image_path = os.path.join('static', 'images', unique_name)
-            image.save(image_path)
-            data['manual_tests'][index]['image'] = unique_name
-        
-        with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        
-        return jsonify({'success': True})
-    
-    except Exception as e:
-        log.error(f"更新测试用例失败: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/admin/move_testcase', methods=['POST'])
-def move_testcase():
-    try:
-        data = request.get_json()
-        model = data.get('model')
-        index = data.get('index')
-        direction = data.get('direction')
-        
-        if not model or index is None or not direction:
-            return jsonify({'success': False, 'error': '缺少必要参数'})
-        
-        config_path = os.path.join('config', model, 'manual_tests.json')
-        
-        if not os.path.exists(config_path):
-            return jsonify({'success': False, 'error': '配置文件不存在'})
-        
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config_data = json.load(f)
-        
-        manual_tests = config_data.get('manual_tests', [])
-        
-        if index < 0 or index >= len(manual_tests):
-            return jsonify({'success': False, 'error': '索引超出范围'})
-        
-        if direction == 'up' and index > 0:
-            manual_tests[index], manual_tests[index - 1] = manual_tests[index - 1], manual_tests[index]
-        elif direction == 'down' and index < len(manual_tests) - 1:
-            manual_tests[index], manual_tests[index + 1] = manual_tests[index + 1], manual_tests[index]
-        else:
-            return jsonify({'success': False, 'error': '无法移动到该位置'})
-        
-        with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, ensure_ascii=False, indent=2)
-        
-        return jsonify({'success': True})
-    
-    except Exception as e:
-        log.error(f"移动测试用例失败: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/admin/get_version_configs', methods=['GET'])
-def get_version_configs():
-    try:
-        configs = []
-        models = ['MS', 'MR', 'TW', 'X310', 'X320', 'HSR']
-        
-        for model in models:
-            config_path = os.path.join('config', model, 'version_config.json')
-            if os.path.exists(config_path):
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    configs.append({
-                        'model': model,
-                        'pilot_version': data.get('pilot_version', ''),
-                        'compass_version': data.get('compass_version', ''),
-                        'rcc_base_version': data.get('rcc_base_version', ''),
-                        'image_version': data.get('image_version', '')
-                    })
-        
-        return jsonify({'success': True, 'configs': configs})
-    
-    except Exception as e:
-        log.error(f"获取版本配置失败: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/admin/get_version_config', methods=['GET'])
-def get_version_config():
-    try:
-        model = request.args.get('model')
-        if not model:
-            return jsonify({'success': False, 'error': '缺少机型参数'})
-        
-        config_path = os.path.join('config', model, 'version_config.json')
-        if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            return jsonify({'success': True, 'config': data})
-        else:
-            return jsonify({'success': True, 'config': {}})
-    
-    except Exception as e:
-        log.error(f"获取版本配置失败: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/admin/save_version_config', methods=['POST'])
-def save_version_config():
-    try:
-        data = request.get_json()
-        model = data.get('model')
-        pilot_version = data.get('pilot_version', '')
-        compass_version = data.get('compass_version', '')
-        rcc_base_version = data.get('rcc_base_version', '')
-        image_version = data.get('image_version', '')
-        
-        if not model:
-            return jsonify({'success': False, 'error': '缺少机型参数'})
-        
-        config_dir = os.path.join('config', model)
-        if not os.path.exists(config_dir):
-            os.makedirs(config_dir)
-        
-        config_path = os.path.join(config_dir, 'version_config.json')
-        
-        config_data = {
-            'pilot_version': pilot_version,
-            'compass_version': compass_version,
-            'rcc_base_version': rcc_base_version,
-            'image_version': image_version
-        }
-        
-        with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, ensure_ascii=False, indent=2)
-        
-        return jsonify({'success': True})
-    
-    except Exception as e:
-        log.error(f"保存版本配置失败: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/admin/delete_version_config', methods=['POST'])
-def delete_version_config():
-    try:
-        data = request.get_json()
-        model = data.get('model')
-        
-        if not model:
-            return jsonify({'success': False, 'error': '缺少机型参数'})
-        
-        config_path = os.path.join('config', model, 'version_config.json')
-        if os.path.exists(config_path):
-            os.remove(config_path)
-        
-        return jsonify({'success': True})
-    
-    except Exception as e:
-        log.error(f"删除版本配置失败: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/admin/delete_testcase', methods=['POST'])
-def delete_testcase():
-    try:
-        data = request.get_json()
-        model = data.get('model')
-        index = data.get('index')
-        
-        if not model or index is None:
-            return jsonify({'success': False, 'error': '缺少必要参数'})
-        
-        config_path = os.path.join('config', model, 'manual_tests.json')
-        
-        if not os.path.exists(config_path):
-            return jsonify({'success': False, 'error': '配置文件不存在'})
-        
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config_data = json.load(f)
-        
-        if index < 0 or index >= len(config_data.get('manual_tests', [])):
-            return jsonify({'success': False, 'error': '索引超出范围'})
-        
-        config_data['manual_tests'].pop(index)
-        
-        with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(config_data, f, ensure_ascii=False, indent=2)
-        
-        return jsonify({'success': True})
-    
-    except Exception as e:
-        log.error(f"删除测试用例失败: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/admin/batch_delete_testcases', methods=['POST'])
-def batch_delete_testcases():
-    try:
-        data = request.get_json()
-        items = data.get('items', [])
-        
-        if not items or len(items) == 0:
-            return jsonify({'success': False, 'error': '请选择要删除的测试用例'})
-        
-        deleted = 0
-        
-        for item in items:
-            model = item.get('model')
-            index = item.get('index')
-            
-            if not model or index is None:
-                continue
-            
-            config_path = os.path.join('config', model, 'manual_tests.json')
-            
-            if not os.path.exists(config_path):
-                continue
-            
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config_data = json.load(f)
-            
-            if index >= 0 and index < len(config_data.get('manual_tests', [])):
-                config_data['manual_tests'].pop(index)
-                
-                with open(config_path, 'w', encoding='utf-8') as f:
-                    json.dump(config_data, f, ensure_ascii=False, indent=2)
-                
-                deleted += 1
-        
-        return jsonify({'success': True, 'deleted': deleted})
-    
-    except Exception as e:
-        log.error(f"批量删除测试用例失败: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/admin/clear_all_testcases', methods=['POST'])
-def clear_all_testcases():
-    try:
-        data = request.get_json()
-        model = data.get('model')
-        
-        if not model:
-            return jsonify({'success': False, 'error': '缺少机型参数'})
-        
-        config_path = os.path.join('config', model, 'manual_tests.json')
-        
-        if not os.path.exists(config_path):
-            return jsonify({'success': False, 'error': '配置文件不存在'})
-        
-        with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump({'manual_tests': []}, f, ensure_ascii=False, indent=2)
-        
-        return jsonify({'success': True})
-    
-    except Exception as e:
-        log.error(f"清空测试用例失败: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/admin/upload_excel', methods=['POST'])
-def upload_excel():
-    temp_path = None
-    wb = None
-    try:
-        model = request.form.get('model')
-        excel_file = request.files.get('excel_file')
-        
-        if not model:
-            return jsonify({'success': False, 'error': '请选择机型'})
-        if not excel_file:
-            return jsonify({'success': False, 'error': '请选择Excel文件'})
-        
-        filename = excel_file.filename
-        if not (filename.endswith('.xlsx') or filename.endswith('.xls')):
-            return jsonify({'success': False, 'error': '请上传Excel文件（.xlsx或.xls格式）'})
-        
-        temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp')
-        if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
-        
-        temp_path = os.path.join(temp_dir, str(uuid.uuid4()) + '_' + filename)
-        excel_file.save(temp_path)
-        
-        wb = load_workbook(temp_path, read_only=True, data_only=True)
-        
-        name_col = -1
-        desc_col = -1
-        expected_col = -1
-        header_row = -1
-        ws = None
-        
-        for sheet_name in wb.sheetnames:
-            current_ws = wb[sheet_name]
-            current_name_col = -1
-            current_desc_col = -1
-            current_expected_col = -1
-            current_header_row = -1
-            
-            for row in range(1, min(20, current_ws.max_row + 1)):
-                for col in range(1, current_ws.max_column + 1):
-                    cell_value = current_ws.cell(row=row, column=col).value
-                    if cell_value:
-                        cell_str = str(cell_value).strip()
-                        if current_name_col == -1 and ('测试用例名称' in cell_str or '测试用例' in cell_str or 'name' in cell_str.lower()):
-                            current_name_col = col
-                            current_header_row = row
-                        elif current_desc_col == -1 and ('测试用例描述' in cell_str or '描述' in cell_str or 'description' in cell_str.lower() or '说明' in cell_str or '步骤' in cell_str or '内容' in cell_str):
-                            current_desc_col = col
-                        elif current_expected_col == -1 and ('预期结果' in cell_str or '期望结果' in cell_str or 'expected' in cell_str.lower() or 'result' in cell_str.lower() or '结果' in cell_str):
-                            current_expected_col = col
-            
-            if current_name_col != -1 and current_desc_col != -1:
-                name_col = current_name_col
-                desc_col = current_desc_col
-                expected_col = current_expected_col
-                header_row = current_header_row
-                ws = current_ws
-                break
-        
-        if name_col == -1:
-            return jsonify({'success': False, 'error': '未找到"测试用例名称"列，请确保Excel包含"测试用例名称"或"名称"列'})
-        if desc_col == -1:
-            return jsonify({'success': False, 'error': '未找到"测试用例描述"列，请确保Excel包含"测试用例描述"或"描述"列'})
-        
-        config_path = os.path.join('config', model, 'manual_tests.json')
-        
-        if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-        else:
-            data = {'manual_tests': []}
-        
-        count = 0
-        skipped = 0
-        
-        for row in range(header_row + 1, ws.max_row + 1):
-            name = ws.cell(row=row, column=name_col).value
-            description = ws.cell(row=row, column=desc_col).value
-            
-            if name:
-                name_str = str(name).strip()
-            else:
-                name_str = ''
-            
-            if description:
-                desc_str = str(description).strip()
-            else:
-                desc_str = ''
-            
-            if expected_col != -1:
-                expected = ws.cell(row=row, column=expected_col).value
-                if expected and str(expected).strip():
-                    if desc_str:
-                        desc_str = desc_str + ' ' + str(expected).strip()
-                    else:
-                        desc_str = str(expected).strip()
-            
-            if not name_str:
-                skipped += 1
-                continue
-            
-            if name_str.startswith('='):
-                skipped += 1
-                continue
-            
-            if 'Category' in name_str or 'Feature Test' in name_str or '类别介绍' in name_str:
-                skipped += 1
-                continue
-            
-            if len(name_str) < 2:
-                skipped += 1
-                continue
-            
-            data['manual_tests'].append({
-                'name': name_str,
-                'description': desc_str
-            })
-            count += 1
-        
-        with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        
-        return jsonify({'success': True, 'count': count, 'skipped': skipped})
-    
-    except Exception as e:
-        log.error(f"批量导入Excel失败: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
-    
-    finally:
-        if wb:
-            try:
-                wb.close()
-            except:
-                pass
-        if temp_path and os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except:
-                pass
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

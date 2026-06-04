@@ -20,6 +20,7 @@ except ImportError:
     from reportlab.lib import colors
 
 from datetime import datetime
+from config.model_config import INTEGRATED_TASK_DESCRIPTIONS, MODEL_CONFIG
 
 # 动态测试子任务描述
 dynamic_task_descriptions = {
@@ -35,88 +36,14 @@ dynamic_task_descriptions = {
 }
 
 # 集成测试子任务描述
-integrated_task_descriptions = {
-    'light_photo': '可见光拍照',
-    'light_video': '可见光录像',
-    'thermal_photo': '热成像拍照',
-    'thermal_video': '热成像录像',
-    'light_PTZ': '云台动作',
-    'light_point': '云台移动变倍至预置点10',
-    'thermal_point': '云台移动变倍至预置点11',
-    'Manual_focusing': '云台变成手动聚焦模式',
-    'Auto_focusing': '云台变成自动聚焦模式',
-    'thermal_Temperature': '测温任务'
-}
+integrated_task_descriptions = INTEGRATED_TASK_DESCRIPTIONS
 
 
 class RobotTestReport:
 
     def __init__(self, data: dict):
         self.data = data
-        # 机型配置字典：定义不同机型对应的测试项和子项
-        self.model_config = {
-            'MS': {
-                'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'dynamic', 'manual'],
-                'button': ['emergency_stop'],
-                'light': ['red', 'blue', 'green'],
-                'anti_collision': ['front', 'back'],
-                'version': ['pilot_version', 'compass_version', 'mirror_system', 'rcc_base_version'],
-                'sensor': ['odom', 'imu_data', 'ks114_sensor', 'encoder', 'scan_1', 'cpu_hz'],
-                'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.0.100:8081'],
-                'dynamic': ['直线', '切区', '曲线', '沟壑', '云台']
-            },
-            'MR': {
-                'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'lift_motor', 'dynamic', 'manual'],
-                'button': ['left_emergency_stop', 'right_emergency_stop', 'voice'],
-                'light': [],
-                'anti_collision': ['front', 'back'],
-                'version': ['pilot_version', 'compass_version', 'mirror_system', 'rws_version'],
-                'sensor': ['odom', 'imu_data', 'ks114_sensor', 'tfmini_sensor', 'encoder', 'scan_1', 'cpu_hz', 'byz06_sensor', 'fs00802_sensor'],
-                'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.0.100:8081', '192.168.0.50'],
-                'dynamic': ['直线', '切区', '曲线', '沟壑', '云台']
-            },
-            'X310': {
-                'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'dynamic', 'manual'],
-                'button': ['emergency_stop', 'voice'],
-                'light': ['red', 'blue', 'green'],
-                'anti_collision': ['front', 'back'],
-                'version': ['pilot_version', 'compass_version', 'mirror_system', 'rcc_base_version'],
-                'sensor': ['odom', 'imu_data', 'ks114_sensor', 'tfmini_sensor', 'encoder', 'scan_1', 'cpu_hz'],
-                'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.0.100:8081'],
-                'dynamic': ['直线', '切区', '曲线', '沟壑', '云台']
-            },
-            'X320': {
-                'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'dynamic', 'manual'],
-                'button': ['emergency_stop', 'voice'],
-                'light': ['red', 'blue', 'green'],
-                'anti_collision': ['front', 'back'],
-                'version': ['pilot_version', 'compass_version', 'mirror_system', 'rcc_base_version'],
-                'sensor': ['odom', 'imu_data', 'ks114_sensor', 'tfmini_sensor', 'encoder', 'scan_1', 'cpu_hz'],
-                'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.0.100:8081'],
-                'dynamic': ['直线', '切区', '曲线', '沟壑', '云台']
-            },
-            'TW': {
-                'test_items': ['version', 'sensor', 'ping', 'button', 'speaker', 'light', 'integrated', 'manual'],
-                'button': ['emergency_stop'],
-                'light': ['red', 'blue', 'green', 'front_light', 'back_light', 'charge_relay'],
-                'anti_collision': ['front', 'back'],
-                'version': ['pilot_version', 'rcc_base_version', 'robot_version', 'rws_version', 'mirror_system', 'youiscript_version', 'mos_version'],
-                'sensor': ['odom', 'imu_data', 'ks114_sensor', 'cpu_hz', 'temperature', 'humidity', 'o2', 'co', 'microphone', 'fan_board'],
-                'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.2.100'],
-                'integrated': ['light_photo', 'light_video', 'thermal_photo', 'thermal_video', 'light_PTZ', 'light_point', 'thermal_point', 'Manual_focusing', 'Auto_focusing', 'thermal_Temperature']
-            },
-            'HSR': {
-        'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'dynamic', 'manual'],
-        'button': ['chassis_left_stop', 'chassis_right_stop', 'integrated_left_stop', 'integrated_right_stop', 'unlock_brake'],
-        'light': ['red', 'blue', 'green'],
-        'anti_collision': ['front', 'back', 'left', 'right'],
-        'version': ['pilot_version', 'compass_version', 'mirror_system', 'mos_version_hsr', 'mirror_system_hsr', 'rcc_base_version'],
-        'sensor': ['odom', 'imu_data', 'encoder', 'scan_1', 'cpu_hz'],
-        'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.88', '192.168.2.90', '192.168.2.250', '192.168.2.2', '192.168.2.89', '192.168.0.100:8081'],
-        'dynamic': ['直线', '切区', '横移', '沟壑', '45°夹角', '精定位', '云台', '上集成']
-    }
-        }
-        # 获取当前机型
+        self.model_config = MODEL_CONFIG
         self.current_model = self.data.get('robot_info', {}).get('model', 'MS')
         # 获取当前机型的配置
         self.current_config = self.model_config.get(self.current_model, self.model_config['MS'])
