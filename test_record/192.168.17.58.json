@@ -13,13 +13,13 @@
       "沟壑": "success",
       "45°夹角": "success",
       "精定位": "success",
-      "云台": "pending",
+      "云台": "failed",
       "上集成": "failed"
     },
-    "result": "running",
-    "time": "2026-05-30 15:21:36",
-    "current_step": "执行任务: 云台",
-    "step_status": "running",
+    "result": "failed",
+    "time": "2026-05-30 15:23:32",
+    "current_step": "任务失败: 云台",
+    "step_status": "failed",
     "init_steps": [
       {
         "name": "切换手动模式",
@@ -50,7 +50,7 @@
         "status": "success"
       }
     ],
-    "error": ""
+    "error": "云台执行失败: HSR云台任务执行失败"
   },
   "version": {
     "pilot_version": "v4.0.6_ex100.251028.1",

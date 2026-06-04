@@ -161,7 +161,7 @@ class AGVClient:
 if __name__ == "__main__":
     client = AGVClient(CLIENT_ID, API_SECRET, BASE_URL)
 
-    ip = "192.168.16.53"   # 这里换成你的机器人IP
+    ip = "192.168.17.58"   # 这里换成你的机器人IP
 
     result = client.execute(ip)
 
