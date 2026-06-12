@@ -17,7 +17,10 @@ class SerialATVersionReader:
         self.remote_path = "/home/youibot/tmp.py"
         self.ssh = None
 
-    def generate_script_content(self, at_command):
+    def generate_script_content(self, at_commands):
+        # 支持多个命令
+        commands_list = at_commands if isinstance(at_commands, list) else [at_commands]
+        commands_json = json.dumps(commands_list)
         return f'''# -*- coding: utf-8 -*-
 import serial
 import time
@@ -36,13 +39,14 @@ def main():
         return
 
     responses = {{}}
-    command = "{at_command}"
+    commands = {commands_json}
 
     try:
-        ser.write((command + "\\r\\n").encode("utf-8"))
-        time.sleep(1)
-        data_received = ser.read(ser.inWaiting()).decode("utf-8", errors="ignore").strip()
-        responses[command] = data_received if data_received else None
+        for command in commands:
+            ser.write((command + "\\r\\n").encode("utf-8"))
+            time.sleep(1)
+            data_received = ser.read(ser.inWaiting()).decode("utf-8", errors="ignore").strip()
+            responses[command] = data_received if data_received else None
     finally:
         ser.close()
         print(json.dumps(responses))
@@ -77,8 +81,8 @@ if __name__ == "__main__":
         stdout.read()
         stderr.read()
 
-    def upload_script(self, at_command):
-        script_content = self.generate_script_content(at_command)
+    def upload_script(self, at_commands):
+        script_content = self.generate_script_content(at_commands)
         sftp = self.ssh.open_sftp()
         try:
             with sftp.file(self.remote_path, "w") as remote_file:
@@ -103,7 +107,9 @@ if __name__ == "__main__":
             return None
 
         data = json.loads(json_match.group(1))
-        response = list(data.values())[0]
+        # 如果是多个命令，返回最后一个命令的响应
+        responses = list(data.values())
+        response = responses[-1] if responses else None
         if not response:
             return None
 
@@ -114,6 +120,17 @@ if __name__ == "__main__":
             self.connect(host_ip)
             self.release_serial_port()
             self.upload_script(at_command)
+            output = self.execute_remote_script()
+            return self.parse_release_version(output)
+        finally:
+            self.close()
+    
+    def execute_multiple_commands(self, host_ip, at_commands):
+        """执行多个AT命令，返回最后一个命令的版本信息"""
+        try:
+            self.connect(host_ip)
+            self.release_serial_port()
+            self.upload_script(at_commands)
             output = self.execute_remote_script()
             return self.parse_release_version(output)
         finally:
@@ -137,6 +154,11 @@ class Rcc_base(SerialATVersionReader):
         software_match = re.search(r"Software V\s*([\d.]+)", response)
         if software_match:
             return software_match.group(1)
+        
+        # 支持 [D]Software V2.02 compile:May 格式，提取 2.02（去掉前面的 V）
+        tw_software_match = re.search(r"\[D\]Software V([\d.]+)", response)
+        if tw_software_match:
+            return tw_software_match.group(1)
 
         return None
 
@@ -582,7 +604,12 @@ class MirrorSystemReader:
     def get_rcc_base_version(self, ip):
         try:
             reader = Rcc_base(username=self.username, password=self.password)
-            return reader.execute_lighting(ip, "AT+ReadVersion")
+            if self.model == "TW":
+                # TW机型：先发送 AT+SetDebugPort=1，再发送 AT+ReadVersion
+                return reader.execute_multiple_commands(ip, ["AT+SetDebugPort=1", "AT+ReadVersion"])
+            else:
+                # 其他机型：直接发送 AT+ReadVersion
+                return reader.execute_lighting(ip, "AT+ReadVersion")
         except Exception as exc:
             return f"🚨 RCC Base 版本获取失败: {exc}"
 
@@ -689,5 +716,5 @@ class MirrorSystemReader:
 
 if __name__ == "__main__":
     reader = MirrorSystemReader(model="TW")
-    result = reader.read_all("192.168.16.71")
+    result = reader.read_all("192.168.17.146")
     print(result)

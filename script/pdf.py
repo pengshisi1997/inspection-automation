@@ -20,7 +20,93 @@ except ImportError:
     from reportlab.lib import colors
 
 from datetime import datetime
-from config.model_config import INTEGRATED_TASK_DESCRIPTIONS, MODEL_CONFIG
+import tempfile
+import atexit
+from config.model_config import INTEGRATED_TASK_DESCRIPTIONS, MODEL_CONFIG, IMAGE_YUNTAI_DIR, TEST_RECORD_DIR, get_image_yuntai_dir, get_manual_upload_dir
+
+
+# 清理进程退出时残留的临时图片文件
+_temp_cleanup_files = []
+
+
+def _cleanup_temp_files():
+    import os
+    for f in list(_temp_cleanup_files):
+        try:
+            if os.path.exists(f):
+                os.remove(f)
+        except Exception:
+            pass
+
+
+atexit.register(_cleanup_temp_files)
+
+
+def normalize_image_orientation(img_path):
+    """
+    根据 EXIF Orientation 将图片像素数据"拍正"后另存为临时文件，
+    避免 ReportLab 直接插入时出现 90°/270°/180° 旋转错位。
+    返回可直接传给 reportlab.platypus.Image 的新路径。
+    若无需旋转或发生异常，则返回原路径。
+    """
+    import os
+    try:
+        from PIL import Image, ImageOps
+    except Exception:
+        return img_path
+
+    try:
+        with Image.open(img_path) as im:
+            # 如果没有 EXIF 方向信息或方向就是"正向"，直接返回原图
+            try:
+                exif = im.getexif()
+            except Exception:
+                exif = None
+            # 0x0112 = Orientation
+            orientation = exif.get(0x0112, 1) if exif else 1
+            if orientation in (1, None):
+                return img_path
+
+            # 按 EXIF 方向执行真正的像素旋转/镜像
+            transposed = ImageOps.exif_transpose(im)
+            if transposed is im or transposed is None:
+                return img_path
+
+            # 保存为临时文件；保留原扩展名便于 reportlab 识别格式
+            ext = os.path.splitext(img_path)[1].lower()
+            if ext not in ('.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp'):
+                ext = '.jpg'
+            suffix = ext if ext else '.jpg'
+            fd, tmp_path = tempfile.mkstemp(prefix="rpt_norm_", suffix=suffix)
+            os.close(fd)
+
+            save_format = {
+                '.jpg': 'JPEG',
+                '.jpeg': 'JPEG',
+                '.png': 'PNG',
+                '.bmp': 'BMP',
+                '.gif': 'GIF',
+                '.webp': 'WEBP',
+            }.get(ext, 'JPEG')
+
+            save_kwargs = {}
+            if save_format == 'JPEG':
+                if transposed.mode not in ('RGB', 'L'):
+                    transposed = transposed.convert('RGB')
+                save_kwargs['quality'] = 92
+            try:
+                transposed.save(tmp_path, save_format, **save_kwargs)
+            except Exception:
+                # 回退：用 reportlab 支持的 JPEG 默认格式再试一次
+                if transposed.mode != 'RGB':
+                    transposed = transposed.convert('RGB')
+                transposed.save(tmp_path, 'JPEG', quality=92)
+
+            _temp_cleanup_files.append(tmp_path)
+            return tmp_path
+    except Exception as e:
+        print(f"图片EXIF校正失败 {img_path}: {str(e)}，将使用原文件插入PDF")
+        return img_path
 
 # 动态测试子任务描述
 dynamic_task_descriptions = {
@@ -169,10 +255,14 @@ class RobotTestReport:
         robot_sn = self.data.get('robot_info', {}).get('sn', '')
         
         if robot_sn and robot_sn.strip():
-            # 构建照片路径
+            # 构建照片路径：优先 test_record/<ip>/image_yuntai/ 其次旧全局目录
             import os
-            image_yuntai_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'image_yuntai')
-            
+            robot_ip = self.data.get('robot_info', {}).get('ip')
+            if robot_ip:
+                image_yuntai_path = get_image_yuntai_dir(robot_ip)
+            else:
+                image_yuntai_path = IMAGE_YUNTAI_DIR
+
             # 仅尝试使用机器人SN的照片，不使用UNKNOWN_SN的照片
             ptz1_path = os.path.join(image_yuntai_path, f'{robot_sn}_ptz1.jpg')
             ptz2_path = os.path.join(image_yuntai_path, f'{robot_sn}_ptz2.jpg')
@@ -195,9 +285,10 @@ class RobotTestReport:
                         print(f"跳过损坏的图片文件 {img_path}: {str(e)}")
                 return False
             
-            # 辅助函数：安全地添加图片
+            # 辅助函数：安全地添加图片（先按 EXIF Orientation 把像素"拍正"）
             def add_image_safely(img_path):
-                img = Image(img_path, width=200*mm, height=150*mm)
+                norm_path = normalize_image_orientation(img_path)
+                img = Image(norm_path, width=200*mm, height=150*mm)
                 elements.append(img)
                 elements.append(Spacer(1, 10))
             
@@ -268,9 +359,59 @@ class RobotTestReport:
         return table
 
     def _manual_info(self, idx):
+        import os
         from reportlab.platypus import Paragraph
+
         manual = self.data.get("manual", {})
         data = manual.get("data", {})
+
+        robot_ip = self.data.get('robot_info', {}).get('ip')
+        manual_upload_root = get_manual_upload_dir(robot_ip) if robot_ip else get_manual_upload_dir(None)
+
+        # 支持的图片扩展名
+        image_exts = ('.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp')
+
+        # 辅助函数：验证图片是否可正常读取
+        def is_image_valid(img_path):
+            try:
+                from PIL import Image as PILImage
+                with PILImage.open(img_path) as _:
+                    return True
+            except Exception as e:
+                print(f"跳过损坏的图片文件 {img_path}: {str(e)}")
+                return False
+
+        # 辅助函数：安全地获取某个测试项目录下的图片文件列表
+        def list_images_in_dir(directory):
+            if not directory or not os.path.isdir(directory):
+                return []
+            try:
+                files = sorted(os.listdir(directory))
+            except Exception:
+                return []
+            results = []
+            for fn in files:
+                full = os.path.join(directory, fn)
+                if not os.path.isfile(full):
+                    continue
+                if not fn.lower().endswith(image_exts):
+                    continue
+                if is_image_valid(full):
+                    results.append(full)
+            return results
+
+        # 汇总：除按测试项名称匹配的目录外，也收集 manual_upload 根目录下所有子目录
+        # 这样即使测试项名称与目录不完全一致也能被捕获
+        all_item_dirs = {}
+        if os.path.isdir(manual_upload_root):
+            try:
+                entries = sorted(os.listdir(manual_upload_root))
+            except Exception:
+                entries = []
+            for entry in entries:
+                entry_path = os.path.join(manual_upload_root, entry)
+                if os.path.isdir(entry_path):
+                    all_item_dirs[entry] = entry_path
 
         elements = []
         section_title = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"][idx-1]
@@ -278,10 +419,12 @@ class RobotTestReport:
         elements.append(Spacer(1, 5))
 
         table_data = [["测试项目", "测试步骤", "结果", "备注", "测试时间"]]
-        
+
         # 直接使用manual_tests.json中的内容，不再进行过滤
+        processed_items = set()
         for test_item in self.manual_tests:
             test_name = test_item.get('name', '')
+            processed_items.add(test_name)
             test_description = test_item.get('description', '')
             # 处理description可能是数组的情况，将其连接成字符串
             if isinstance(test_description, list):
@@ -301,32 +444,51 @@ class RobotTestReport:
             test_time_paragraph = Paragraph(test_time, self.text_style)
             table_data.append([test_name_paragraph, test_description_paragraph, test_result_paragraph, test_note_paragraph, test_time_paragraph])
 
+        # 如有未在配置中出现但已上传图片的额外测试项，补录进去
+        for extra_item, extra_dir in sorted(all_item_dirs.items()):
+            if extra_item in processed_items:
+                continue
+            extra_result = data.get(extra_item, '')
+            extra_time = ''
+            extra_note = ''
+            if isinstance(extra_result, dict):
+                extra_time = extra_result.get('time', '')
+                extra_note = extra_result.get('note', '')
+                extra_result = extra_result.get('result', '')
+            table_data.append([
+                Paragraph(extra_item, self.text_style),
+                Paragraph("", self.text_style),
+                Paragraph(self._status(extra_result), self.text_style),
+                Paragraph(extra_note, self.text_style),
+                Paragraph(extra_time, self.text_style),
+            ])
+
         # 使用Paragraph对象包装总体结果和测试时间行的文本
         total_result_paragraph = Paragraph("总体结果", self.text_style)
         total_result_value_paragraph = Paragraph(self._status(manual.get("result")), self.text_style)
         test_time_paragraph = Paragraph("测试时间", self.text_style)
         test_time_value_paragraph = Paragraph(manual.get("time", ""), self.text_style)
         empty_paragraph = Paragraph("", self.text_style)
-        
+
         table_data.append([total_result_paragraph, empty_paragraph, total_result_value_paragraph, empty_paragraph, empty_paragraph])
         table_data.append([test_time_paragraph, empty_paragraph, test_time_value_paragraph, empty_paragraph, empty_paragraph])
 
         # 更新表格样式以适应5列，调整列宽度分配
         table = Table(table_data, colWidths=[90, 250, 60, 80, 100])
-        
+
         # 使用自定义样式
         table.setStyle(TableStyle([
             ("FONTNAME", (0, 0), (-1, -1), "STSong-Light"),
             ("FONTSIZE", (0, 1), (-1, -1), 9),  # 其他列的测试内容字体保持正常大小
             ("FONTSIZE", (1, 1), (1, -1), 6),  # 测试步骤列的字体缩小
-            
+
             # 表头样式
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor('#3498db')),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
             ("FONTSIZE", (0, 0), (-1, 0), 10),  # 表头字体保持正常大小
             ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
             ("TOPPADDING", (0, 0), (-1, 0), 6),
-            
+
             # 内容样式
             ("BACKGROUND", (0, 1), (-1, -1), colors.white),
             ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor('#ecf0f1')),
@@ -340,8 +502,52 @@ class RobotTestReport:
         ]))
 
         elements.append(table)
+        elements.append(Spacer(1, 10))
+
+        # ==============================
+        # 人工测试照片嵌入 PDF（竖版排布）
+        # ==============================
+        has_any_photo = False
+        # 竖版：宽 120mm × 高 170mm，确保 A4 纵向内一张图占一整页
+        photo_w = 120 * mm
+        photo_h = 170 * mm
+
+        def append_photos(title, photos):
+            nonlocal has_any_photo
+            if not photos:
+                return
+            has_any_photo = True
+            elements.append(Paragraph(f"【{title}】测试照片", self.header_style))
+            elements.append(Spacer(1, 5))
+            for photo_path in photos:
+                try:
+                    # 根据 EXIF Orientation 先把像素"拍正"，再交给 reportlab
+                    norm_path = normalize_image_orientation(photo_path)
+                    elements.append(Image(norm_path, width=photo_w, height=photo_h))
+                    elements.append(Paragraph(os.path.basename(photo_path), self.text_style))
+                    elements.append(Spacer(1, 8))
+                except Exception as e:
+                    print(f"添加图片失败 {photo_path}: {str(e)}")
+
+        # 先处理在 manual_tests.json 中显式出现的测试项，保持与表格顺序一致
+        for test_item in self.manual_tests:
+            test_name = test_item.get('name', '')
+            if not test_name:
+                continue
+            item_dir = all_item_dirs.get(test_name) or os.path.join(manual_upload_root, test_name)
+            append_photos(test_name, list_images_in_dir(item_dir))
+
+        # 再处理剩下的未匹配到配置的目录（冗余保障）
+        for extra_item, extra_dir in sorted(all_item_dirs.items()):
+            if extra_item in processed_items:
+                continue
+            append_photos(extra_item, list_images_in_dir(extra_dir))
+
+        if not has_any_photo:
+            elements.append(Paragraph("（本IP暂无人工测试照片）", self.text_style))
+
         elements.append(Spacer(1, 15))
-        
+
         return elements
 
     # ------------------------------
@@ -822,8 +1028,11 @@ if __name__ == "__main__":
     import json
     import os
 
-    # 确保有测试数据
-    test_file = "test_record/192.168.16.67.json"
+    # 确保有测试数据: 优先 test_record/<ip>/<ip>.json，回退旧路径
+    ip_test = "192.168.16.67"
+    test_file = get_result_file_path(ip_test) if 'get_result_file_path' in dir() else os.path.join(TEST_RECORD_DIR, f"{ip_test}.json")
+    if not os.path.exists(test_file):
+        test_file = os.path.join(TEST_RECORD_DIR, f"{ip_test}.json")
     if os.path.exists(test_file):
         with open(test_file, "r", encoding="utf-8") as f:
             data = json.load(f)

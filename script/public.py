@@ -5,6 +5,17 @@ import json
 import subprocess
 import time
 import pyautogui
+from config.model_config import IMAGE_YUNTAI_DIR, TEST_RECORD_DIR, get_image_yuntai_dir, get_result_file_path
+
+
+def _safe_name(sn):
+    if not sn:
+        return "UNKNOWN_SN"
+    cleaned = str(sn).strip()
+    for ch in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']:
+        cleaned = cleaned.replace(ch, "_")
+    return cleaned or "UNKNOWN_SN"
+
 
 def download_latest_image(ip):
     username = "youibot"
@@ -18,16 +29,16 @@ def download_latest_image(ip):
     try:
         def get_sn_name():
             try:
-                result_file = os.path.join(os.getcwd(), "test_record", f"{ip}.json")
+                result_file = get_result_file_path(ip)
+                if not os.path.exists(result_file):
+                    # 兼容旧路径
+                    result_file = os.path.join(TEST_RECORD_DIR, f"{ip}.json")
                 if not os.path.exists(result_file):
                     return "UNKNOWN_SN"
                 with open(result_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 sn = data.get("robot_info", {}).get("sn") or "UNKNOWN_SN"
-                sn = str(sn).strip()
-                for ch in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']:
-                    sn = sn.replace(ch, "_")
-                return sn if sn else "UNKNOWN_SN"
+                return _safe_name(sn)
             except Exception:
                 return "UNKNOWN_SN"
 
@@ -79,10 +90,8 @@ def download_latest_image(ip):
         ptz_paths = extract_image_paths('ptz拍照')
         preset_paths = extract_image_paths('预置点拍照')
 
-        # 创建image_yuntai目录
-        local_dir = os.path.join(os.getcwd(), "image_yuntai")
-        if not os.path.exists(local_dir):
-            os.makedirs(local_dir)
+        # 按IP区分保存到 test_record/<ip>/image_yuntai/ 目录下
+        local_dir = get_image_yuntai_dir(ip)
 
         result_paths = {}
 
@@ -159,6 +168,7 @@ def get_temperature(ip):
         print("request error:", e)
         return None
 
+
 def upload_file_to_server(host):
     # 使用绝对路径，确保无论从哪个目录执行都能找到文件
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -200,78 +210,77 @@ def auto_ssh(ip):
     pyautogui.write("python read_topic.py")
     pyautogui.press("enter")
 
+
 def get_sn_from_ip(ip):
     """
     从测试记录文件中获取 SN 号
-    
+
     Args:
         ip: 机器人IP地址
-    
+
     Returns:
         SN 号，如果失败返回 UNKNOWN_SN
     """
     try:
-        result_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_record", f"{ip}.json")
+        result_file = get_result_file_path(ip)
+        if not os.path.exists(result_file):
+            # 兼容旧路径
+            result_file = os.path.join(TEST_RECORD_DIR, f"{ip}.json")
         if not os.path.exists(result_file):
             return "UNKNOWN_SN"
         with open(result_file, "r", encoding="utf-8") as f:
             data = json.load(f)
         sn = data.get("robot_info", {}).get("sn") or "UNKNOWN_SN"
-        sn = str(sn).strip()
-        for ch in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']:
-            sn = sn.replace(ch, "_")
-        return sn if sn else "UNKNOWN_SN"
+        return _safe_name(sn)
     except Exception:
         return "UNKNOWN_SN"
 
 
 def download_mos_file(ip, remote_path, local_filename):
     """
-    从机器人下载文件到 image_yuntai 目录
-    
+    从机器人下载文件到对应IP的 image_yuntai 子目录
+
     Args:
         ip: 机器人IP地址
         remote_path: 远程文件路径
         local_filename: 本地文件名（不含路径）
-    
+
     Returns:
         本地文件路径，如果失败返回 None
     """
     username = "youibot"
     password = "youibot"
-    
+
     if not remote_path:
         return None
-    
+
     # 获取 SN 号
     sn_name = get_sn_from_ip(ip)
-    
+
     # 构建新的文件名：SN_原文件名
     filename_with_sn = f"{sn_name}_{local_filename}"
-    
+
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     sftp = None
-    
+
     try:
-        # 创建 image_yuntai 目录
-        local_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "image_yuntai")
-        if not os.path.exists(local_dir):
-            os.makedirs(local_dir)
-        
+        # 按IP区分保存到 test_record/<ip>/image_yuntai/ 目录下
+        local_dir = get_image_yuntai_dir(ip)
+
         ssh.connect(ip, username=username, password=password, timeout=10)
         sftp = ssh.open_sftp()
-        
+
         # 处理远程路径
         remote_file = remote_path.replace("\\", "/").replace("//", "/")
-        
+
         # 构建本地路径
         local_path = os.path.join(local_dir, filename_with_sn)
-        
+
         # 下载文件
         sftp.get(remote_file, local_path)
         return local_path
-        
+
     except Exception as e:
         print(f"下载文件失败: {e}")
         return None

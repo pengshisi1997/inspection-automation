@@ -14,6 +14,10 @@ import compass_request
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_MODEL = "MS"
 
+# 引入全局路径配置
+sys.path.insert(0, BASE_DIR)
+from config.model_config import IMAGE_YUNTAI_DIR, TEST_RECORD_DIR, get_image_yuntai_dir, get_result_file_path
+
 
 class InspectionAutomation:
     def __init__(self, ip, jixing):
@@ -128,7 +132,10 @@ class InspectionAutomation:
         # 获取SN号
         def get_sn():
             try:
-                result_file = os.path.join(BASE_DIR, 'test_record', f"{self.ip}.json")
+                result_file = get_result_file_path(self.ip)
+                if not os.path.exists(result_file):
+                    # 兼容旧路径
+                    result_file = os.path.join(TEST_RECORD_DIR, f"{self.ip}.json")
                 if not os.path.exists(result_file):
                     return "UNKNOWN_SN"
                 with open(result_file, "r", encoding="utf-8") as f:
@@ -142,7 +149,8 @@ class InspectionAutomation:
                 return "UNKNOWN_SN"
         
         sn = get_sn()
-        image_yuntai_dir = os.path.join(BASE_DIR, 'image_yuntai')
+        # 按IP区分保存到 test_record/<ip>/image_yuntai/ 目录下
+        image_yuntai_dir = get_image_yuntai_dir(self.ip)
         os.makedirs(image_yuntai_dir, exist_ok=True)
         
         # 直接调用HSR云台接口，指定保存目录和SN前缀
@@ -251,12 +259,12 @@ class InspectionAutomation:
 
     def save_task_status(self, status, current_step=None, step_status=None, init_steps=None, error=None, result=None):
         """保存任务状态到文件"""
-        status_dir = 'test_record'
+        # 使用按IP区分的路径: test_record/<ip>/<ip>.json
+        status_file = get_result_file_path(self.ip)
+        status_dir = os.path.dirname(status_file)
         if not os.path.exists(status_dir):
-            os.makedirs(status_dir)
+            os.makedirs(status_dir, exist_ok=True)
 
-        status_file = os.path.join(status_dir, f"{self.ip}.json")
-        
         existing_data = {}
         if os.path.exists(status_file):
             with open(status_file, 'r', encoding='utf-8') as f:

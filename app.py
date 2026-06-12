@@ -16,7 +16,20 @@ from config.model_config import (
     TEST_ORDER,
     VERSION_STANDARDS,
     get_version_fields,
+    IMAGE_DIR,
+    IMAGE_YUNTAI_DIR,
+    TEST_RECORD_DIR,
+    get_ip_dir,
+    get_result_file_path,
+    get_image_yuntai_dir,
+    get_manual_upload_dir,
 )
+
+# 二维码图片目录（仍然放在 static/qrcode，用于网页直接展示给浏览器显示）
+QRCODE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'qrcode')
+os.makedirs(QRCODE_DIR, exist_ok=True)
+# 默认 MANUAL_UPLOAD_DIR 用于兼容未指定的旧调用；新代码统一使用 get_manual_upload_dir(ip)
+MANUAL_UPLOAD_DIR = get_manual_upload_dir(None)
 
 
 # 添加脚本目录到Python路径
@@ -79,10 +92,18 @@ def load_manual_tests(model):
 
 
 def read_result_file(ip):
-    # 确保test_record目录存在
-    os.makedirs('test_record', exist_ok=True)
-    filename = os.path.join('test_record', f"{ip}.json")
+    # 确保test_record/<ip>/目录存在，并读取该目录下的 <ip>.json
+    filename = get_result_file_path(ip)
     if not os.path.exists(filename):
+        # 兼容旧路径：test_record/<ip>.json
+        old_filename = os.path.join(TEST_RECORD_DIR, f"{ip}.json")
+        if os.path.exists(old_filename):
+            try:
+                with open(old_filename, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                log.error(f"读取{old_filename}文件失败: {e}")
+                return {}
         return {}
     try:
         with open(filename, 'r', encoding='utf-8') as f:
@@ -93,9 +114,8 @@ def read_result_file(ip):
 
 # 写入指定IP的测试结果文件
 def write_result_file(ip, data):
-    # 确保test_record目录存在
-    os.makedirs('test_record', exist_ok=True)
-    filename = os.path.join('test_record', f"{ip}.json")
+    # 保存到 test_record/<ip>/<ip>.json
+    filename = get_result_file_path(ip)
     try:
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -1906,7 +1926,7 @@ def generate_report():
 @app.route('/image/<image_name>')
 def serve_image(image_name):
     try:
-        return send_from_directory(os.path.join(app.root_path, 'image'), image_name)
+        return send_from_directory(IMAGE_DIR, image_name)
     except Exception as e:
         log.error(f"提供图片失败: {str(e)}")
         return jsonify({'success': False, 'error': '图片不存在'}), 404
@@ -1984,7 +2004,7 @@ def get_integrated_file():
         # 获取 SN 号
         def get_sn():
             try:
-                result_file = os.path.join(BASE_DIR, 'test_record', f"{bound_ip}.json")
+                result_file = os.path.join(TEST_RECORD_DIR, f"{bound_ip}.json")
                 if not os.path.exists(result_file):
                     return "UNKNOWN_SN"
                 with open(result_file, "r", encoding="utf-8") as f:
@@ -1999,17 +2019,27 @@ def get_integrated_file():
         
         sn_name = get_sn()
         filename_with_sn = f"{sn_name}_{filename}"
-        
-        # 构建文件路径
-        file_path = os.path.join(BASE_DIR, 'image_yuntai', filename_with_sn)
-        
+
+        # 1) 优先在本IP的 image_yuntai 子目录下查找
+        ip_dir = get_image_yuntai_dir(bound_ip)
+        file_path = os.path.join(ip_dir, filename_with_sn)
+
         if not os.path.exists(file_path):
-            # 尝试不带 SN 的旧文件名
-            old_file_path = os.path.join(BASE_DIR, 'image_yuntai', filename)
-            if os.path.exists(old_file_path):
-                file_path = old_file_path
+            # 2) 尝试不带 SN 的旧文件名（仍在IP子目录内）
+            alt = os.path.join(ip_dir, filename)
+            if os.path.exists(alt):
+                file_path = alt
             else:
-                return jsonify({'success': False, 'error': f'文件不存在: {filename_with_sn}'})
+                # 3) 回退到旧全局 image_yuntai 目录
+                old_path = os.path.join(IMAGE_YUNTAI_DIR, filename_with_sn)
+                if os.path.exists(old_path):
+                    file_path = old_path
+                else:
+                    old_path2 = os.path.join(IMAGE_YUNTAI_DIR, filename)
+                    if os.path.exists(old_path2):
+                        file_path = old_path2
+                    else:
+                        return jsonify({'success': False, 'error': f'文件不存在: {filename_with_sn}'})
         
         # 根据文件类型设置处理方式
         if 'video' in file_type:
@@ -2048,7 +2078,7 @@ def get_temperature_data():
         # 获取 SN 号
         def get_sn():
             try:
-                result_file = os.path.join(BASE_DIR, 'test_record', f"{bound_ip}.json")
+                result_file = os.path.join(TEST_RECORD_DIR, f"{bound_ip}.json")
                 if not os.path.exists(result_file):
                     return "UNKNOWN_SN"
                 with open(result_file, "r", encoding="utf-8") as f:
@@ -2063,18 +2093,29 @@ def get_temperature_data():
         
         sn_name = get_sn()
         filename_with_sn = f"{sn_name}_cewen.json"
-        
-        # 构建文件路径
-        file_path = os.path.join(BASE_DIR, 'image_yuntai', filename_with_sn)
-        
+
+        # 1) 优先在本IP的 image_yuntai 子目录下查找
+        ip_dir = get_image_yuntai_dir(bound_ip)
+        file_path = os.path.join(ip_dir, filename_with_sn)
+
         if not os.path.exists(file_path):
-            # 尝试不带 SN 的旧文件名
-            old_file_path = os.path.join(BASE_DIR, 'image_yuntai', 'cewen.json')
-            if os.path.exists(old_file_path):
-                file_path = old_file_path
+            # 2) 尝试不带 SN 的旧文件名
+            alt = os.path.join(ip_dir, 'cewen.json')
+            if os.path.exists(alt):
+                file_path = alt
                 filename_with_sn = 'cewen.json'
             else:
-                return jsonify({'success': False, 'error': '暂无温度数据，请先执行测温任务'})
+                # 3) 回退到旧全局 image_yuntai 目录
+                old_path = os.path.join(IMAGE_YUNTAI_DIR, filename_with_sn)
+                if os.path.exists(old_path):
+                    file_path = old_path
+                else:
+                    old_path2 = os.path.join(IMAGE_YUNTAI_DIR, 'cewen.json')
+                    if os.path.exists(old_path2):
+                        file_path = old_path2
+                        filename_with_sn = 'cewen.json'
+                    else:
+                        return jsonify({'success': False, 'error': '暂无温度数据，请先执行测温任务'})
         
         # 读取温度数据
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -2111,6 +2152,252 @@ def get_temperature_api():
         import traceback
         log.error(f"堆栈: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': f"{str(e)}"})
+
+
+# ================= 手动测试图片上传（手机扫码上传） =================
+
+def _safe_filename(name):
+    """将文件名处理为安全的形式（保留中文字符，仅移除路径与特殊控制字符）"""
+    if not name:
+        return '_'
+    # 移除常见的文件系统非法字符、控制字符以及路径分隔符
+    cleaned = re.sub(r'[\\/:*?"<>|\x00-\x1f]', '_', str(name))
+    # 折叠多余的空白与下划线
+    cleaned = re.sub(r'\s+', '_', cleaned).strip('_')
+    if not cleaned:
+        cleaned = '_'
+    return cleaned[:120]  # 限制长度，避免超长路径
+
+
+def _manual_item_dir(ip, item_name, create=True):
+    """构造指定测试项的图片存储目录。以 IP + 测试项名称区分。
+    新的路径： test_record/<ip>/manual_upload/<item_name>/
+    当 ip 为 shared/None/空字符串时，回退到 static/manual_upload 以保持兼容。
+    """
+    safe_ip = _safe_filename(ip or 'unknown')
+    safe_item = _safe_filename(item_name or 'unknown')
+    # 根据是否有明确的IP来选择父目录
+    use_ip_dir = bool(ip) and ip not in ('shared', 'unknown')
+    if use_ip_dir:
+        base_dir = get_manual_upload_dir(safe_ip)
+    else:
+        base_dir = get_manual_upload_dir(None)
+    dir_path = os.path.join(base_dir, safe_item)
+    if create:
+        os.makedirs(dir_path, exist_ok=True)
+    return dir_path
+
+
+def _list_manual_images(ip, item_name):
+    """列出某个测试项已上传的图片文件名（按修改时间倒序）"""
+    target_dir = _manual_item_dir(ip, item_name, create=False)
+    if not os.path.isdir(target_dir):
+        return []
+    files = []
+    for name in os.listdir(target_dir):
+        lower = name.lower()
+        if lower.endswith(('.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif')):
+            files.append(name)
+    try:
+        files.sort(key=lambda n: os.path.getmtime(os.path.join(target_dir, n)), reverse=True)
+    except OSError:
+        pass
+    return files
+
+
+@app.route('/manual_upload/qrcode', methods=['GET'])
+def manual_upload_qrcode():
+    """
+    根据 item_name 生成一个二维码，扫码后跳转到手机上传页面。
+    由于浏览器访问时的 host/port 会被手机通过同一局域网访问，
+    这里使用 request.host 来构造绝对 URL。
+    """
+    item_name = request.args.get('item_name', '').strip()
+    if not item_name:
+        return jsonify({'success': False, 'error': '缺少 item_name 参数'}), 400
+
+    # 构造上传页面的绝对URL，手机与服务端在同一局域网即可访问
+    scheme = request.scheme
+    host = request.host
+    # 若 host 是 127.0.0.1 或 localhost，则需要让用户手动填写 IP
+    import socket
+    try:
+        host_ip = host.split(':')[0]
+        if host_ip in ('127.0.0.1', 'localhost', ''):
+            # 尝试获取本机局域网 IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                s.connect(('8.8.8.8', 80))
+                lan_ip = s.getsockname()[0]
+            finally:
+                s.close()
+            port = request.host.split(':')[1] if ':' in request.host else '5000'
+            host = f"{lan_ip}:{port}"
+    except Exception:
+        pass
+
+    from urllib.parse import urlencode, quote
+    # 把 session 中绑定的机器人ip带上，手机端打开后默认填入
+    bound_ip = session.get('bound_ip', '')
+    query = urlencode({'item_name': item_name, 'ip': bound_ip}) if bound_ip else urlencode({'item_name': item_name})
+    upload_url = f"{scheme}://{host}/manual_upload?{query}"
+
+    # 生成二维码
+    img_path = None
+    try:
+        import qrcode
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=8,
+            border=2,
+        )
+        qr.add_data(upload_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        safe_item = _safe_filename(item_name)
+        img_name = f"qr_{safe_item}_{uuid.uuid4().hex[:8]}.png"
+        img_path = os.path.join(QRCODE_DIR, img_name)
+        img.save(img_path)
+        qrcode_url = f"/static/qrcode/{img_name}"
+    except Exception as e:
+        log.error(f"生成二维码失败（可能缺少 qrcode 库）: {e}")
+        qrcode_url = None
+
+    return jsonify({
+        'success': True,
+        'upload_url': upload_url,
+        'qrcode_url': qrcode_url,
+        'item_name': item_name,
+    })
+
+
+@app.route('/manual_upload', methods=['GET'])
+def manual_upload_page():
+    """手机端上传页面。优先读取 URL 的 ip 参数（便于手机端默认填入）。"""
+    item_name = request.args.get('item_name', '').strip()
+    if not item_name:
+        return "缺少 item_name 参数", 400
+    ip = request.args.get('ip', '').strip() or session.get('bound_ip', '')
+    return render_template('manual_upload.html', item_name=item_name, ip=ip)
+
+
+@app.route('/manual_upload_api', methods=['POST'])
+def manual_upload_api():
+    """手机端上传图片的接口。不依赖 session，使用请求中的 ip 参数或从表单取。"""
+    item_name = request.form.get('item_name', '').strip()
+    # 允许从请求中显式指定 ip（因为手机端没有 session bound_ip）
+    ip = request.form.get('ip', '').strip()
+    if not ip:
+        ip = 'shared'
+    if not item_name:
+        return jsonify({'success': False, 'error': '缺少 item_name 参数'}), 400
+
+    files = request.files.getlist('images')
+    if not files:
+        return jsonify({'success': False, 'error': '没有上传的文件'}), 400
+
+    target_dir = _manual_item_dir(ip, item_name, create=True)
+    saved = []
+    errors = []
+    for f in files:
+        if not f or not f.filename:
+            continue
+        try:
+            # 保留原扩展名
+            original = f.filename
+            ext = os.path.splitext(original)[1].lower()
+            if ext not in ('.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif'):
+                ext = '.jpg'
+            new_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}{ext}"
+            save_path = os.path.join(target_dir, new_name)
+            f.save(save_path)
+            saved.append({
+                'name': new_name,
+                'url': f"/manual_upload_images/{_safe_filename(ip)}/{_safe_filename(item_name)}/{new_name}",
+            })
+        except Exception as e:
+            errors.append(str(e))
+            log.error(f"保存上传图片失败 {f.filename}: {e}")
+
+    if not saved and errors:
+        return jsonify({'success': False, 'error': '; '.join(errors)}), 500
+
+    return jsonify({
+        'success': True,
+        'saved': saved,
+        'errors': errors,
+        'ip': ip,
+        'item_name': item_name,
+    })
+
+
+@app.route('/manual_upload_images/<ip_dir>/<item_dir>/<filename>')
+def manual_upload_images(ip_dir, item_dir, filename):
+    """提供手动测试上传图片访问。既支持按IP子目录，也支持旧的 static 目录。"""
+    safe_ip = _safe_filename(ip_dir)
+    safe_item = _safe_filename(item_dir)
+    # 1) 优先：test_record/<ip>/manual_upload/<item>/<filename>
+    directory = os.path.join(get_manual_upload_dir(safe_ip), safe_item)
+    if not os.path.isdir(directory) or not os.path.isfile(os.path.join(directory, filename)):
+        # 2) 回退：旧 static/manual_upload/<ip>/<item>/<filename>
+        directory = os.path.join(MANUAL_UPLOAD_DIR, safe_ip, safe_item)
+    if not os.path.isdir(directory):
+        return jsonify({'success': False, 'error': '目录不存在'}), 404
+    try:
+        return send_from_directory(directory, filename)
+    except Exception as e:
+        log.error(f"提供上传图片失败: {e}")
+        return jsonify({'success': False, 'error': '文件不存在'}), 404
+
+
+@app.route('/get_manual_upload_images', methods=['GET'])
+def get_manual_upload_images():
+    """获取某个测试项已上传的图片列表
+    如果请求里带 ip 参数时用之，否则使用 session bound_ip。"""
+    item_name = request.args.get('item_name', '').strip()
+    if not item_name:
+        return jsonify({'success': False, 'error': '缺少 item_name 参数'}), 400
+    # 优先使用请求参数中的 ip，否则使用 session bound_ip，最后回退到 'shared'
+    ip = request.args.get('ip', '').strip() or session.get('bound_ip') or 'shared'
+
+    image_files = _list_manual_images(ip, item_name)
+    safe_ip = _safe_filename(ip)
+    safe_item = _safe_filename(item_name)
+    images = [{
+        'name': name,
+        'url': f"/manual_upload_images/{safe_ip}/{safe_item}/{name}",
+    } for name in image_files]
+
+    return jsonify({
+        'success': True,
+        'item_name': item_name,
+        'ip': ip,
+        'images': images,
+    })
+
+
+@app.route('/delete_manual_upload_image', methods=['POST'])
+def delete_manual_upload_image():
+    """删除一张已上传的图片"""
+    item_name = request.json.get('item_name', '').strip()
+    filename = request.json.get('filename', '').strip()
+    if not item_name or not filename:
+        return jsonify({'success': False, 'error': '参数不全'}), 400
+    # 支持通过请求体显式指定 ip，否则使用 session bound_ip
+    ip = request.json.get('ip', '').strip() or session.get('bound_ip') or 'shared'
+
+    target_dir = _manual_item_dir(ip, item_name, create=False)
+    file_path = os.path.join(target_dir, filename)
+    if not os.path.isfile(file_path):
+        return jsonify({'success': False, 'error': '文件不存在'}), 404
+    try:
+        os.remove(file_path)
+        return jsonify({'success': True})
+    except Exception as e:
+        log.error(f"删除图片失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 if __name__ == '__main__':

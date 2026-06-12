@@ -1,3 +1,90 @@
+import os
+
+# ============================================================
+# 全局数据存储根目录
+#
+# 新的存储结构（按IP分组，便于按机器人归档/迁移）：
+#   DATA_BASE_DIR/
+#       test_record/
+#           <ip1>/
+#               <ip1>.json          # 测试结果 JSON
+#               image_yuntai/       # 该IP下载的云台/集成图片/视频
+#               manual_upload/      # 该IP手动测试上传的图片
+#                   <测试项A>/
+#                       xxx.jpg
+#                   <测试项B>/
+#                       ...
+#           <ip2>/
+#               ...
+#       image/                      # 其它共用图片（若有）
+# ============================================================
+DATA_BASE_DIR = r"D:\自动化测试保存"
+
+# 顶层目录
+TEST_RECORD_DIR = os.path.join(DATA_BASE_DIR, "test_record")
+IMAGE_DIR        = os.path.join(DATA_BASE_DIR, "image")
+# 为保持与旧代码的兼容性，仍然导出这个变量；新代码优先使用
+# get_image_yuntai_dir(ip) 来获取按IP区分的目录
+IMAGE_YUNTAI_DIR = os.path.join(DATA_BASE_DIR, "image_yuntai")
+
+# 确保顶层目录存在（程序首次运行时自动创建）
+for _dir in (TEST_RECORD_DIR, IMAGE_DIR, IMAGE_YUNTAI_DIR):
+    os.makedirs(_dir, exist_ok=True)
+
+
+def _safe_ip(ip):
+    """对 IP 做简单清洗，便于作为合法目录名使用。"""
+    if not ip:
+        return "unknown"
+    cleaned = str(ip).strip()
+    for ch in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']:
+        cleaned = cleaned.replace(ch, "_")
+    return cleaned or "unknown"
+
+
+def get_ip_dir(ip):
+    """获取指定IP的归档目录： DATA_BASE_DIR/test_record/<ip>/"""
+    d = os.path.join(TEST_RECORD_DIR, _safe_ip(ip))
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def get_result_file_path(ip):
+    """获取指定IP的测试结果 JSON 文件路径。"""
+    return os.path.join(get_ip_dir(ip), f"{_safe_ip(ip)}.json")
+
+
+def get_image_yuntai_dir(ip=None):
+    """
+    获取云台/集成图片存储目录。
+    - 若提供了 ip，则返回： test_record/<ip>/image_yuntai/
+    - 否则回退到旧的全局目录： DATA_BASE_DIR/image_yuntai/
+    """
+    if ip:
+        d = os.path.join(get_ip_dir(ip), "image_yuntai")
+        os.makedirs(d, exist_ok=True)
+        return d
+    os.makedirs(IMAGE_YUNTAI_DIR, exist_ok=True)
+    return IMAGE_YUNTAI_DIR
+
+
+def get_manual_upload_dir(ip=None):
+    """
+    获取手动测试图片存储目录。
+    - 若提供了 ip，则返回： test_record/<ip>/manual_upload/
+    - 否则回退到旧的全局目录： static/manual_upload/
+    """
+    if ip:
+        d = os.path.join(get_ip_dir(ip), "manual_upload")
+        os.makedirs(d, exist_ok=True)
+        return d
+    # 旧路径，兼容无 ip 的场景（如 shared / 未登录）
+    old = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static", "manual_upload")
+    old = os.path.abspath(old)
+    os.makedirs(old, exist_ok=True)
+    return old
+
+
 DEFAULT_MODEL = 'MS'
 
 VERSION_ITEMS = {
@@ -33,8 +120,8 @@ VERSION_STANDARDS = {
         "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
     },
     'TW': {
-        "pilot_version": "feature_v4.0.3_xjyw.260528.1-x86_64-running",
-        "rcc_base_version": "2.01",
+        "pilot_version": "release_v4.0.8_xjyw.260528.1-x86_64-running",
+        "rcc_base_version": "2.02",
         "robot_version": "robot-v1.3.0_202605301834",
         "rws_version": "v2.0.2",
         "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
@@ -44,7 +131,7 @@ VERSION_STANDARDS = {
     'HSR': {
         "pilot_version": "v4.0.6_ex100.251028.1",
         "compass_version": "YOUICompassSetup-4.7.4-xjyw-V3.0-bl-20251229",
-        "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
+        "mirror_system": "Pilot-4.0.3-desktop-2025-11-27.img",
         "mos_version_hsr": "2.6.21_ARIS",
         "mirror_system_hsr": "Pilot-4.0.3-desktop-2025-11-27.img",
         "rcc_base_version": "2.01",
@@ -112,7 +199,7 @@ MODEL_CONFIG = {
         'anti_collision': ['front', 'back', 'left', 'right'],
         'version': list(VERSION_ITEMS['HSR']),
         'sensor': ['odom', 'imu_data', 'encoder', 'scan_1', 'cpu_hz'],
-        'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.88', '192.168.2.90', '192.168.2.250', '192.168.2.2', '192.168.2.89', '192.168.0.100:8081'],
+        'ping': ['192.168.0.8', '192.168.2.88', '192.168.2.90', '192.168.2.250', '192.168.2.2', '192.168.2.89', '192.168.0.100:8081'],
         'dynamic': HSR_DYNAMIC_TASKS,
     },
 }

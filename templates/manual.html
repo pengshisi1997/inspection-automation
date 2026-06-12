@@ -44,11 +44,36 @@
     </div>
 </div>
 
+<!-- 二维码弹窗 -->
+<div id="qrcodeModal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.55);">
+    <div style="position: relative; margin: 5% auto; padding: 24px 24px 20px 24px; width: 90%; max-width: 420px; background-color: #fff; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.25);">
+        <span id="closeQrcodeModal" style="position: absolute; top: 10px; right: 16px; color: #909399; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1;">&times;</span>
+        <h3 id="qrcodeTitle" style="margin: 0 0 12px 0; color: #303133; font-size: 18px; text-align: center;">📱 手机扫码上传图片</h3>
+        <div id="qrcodeItemName" style="color:#606266; font-size:13px; text-align:center; margin-bottom: 14px;"></div>
+        <div style="text-align:center; background:#f5f7fa; border-radius: 10px; padding: 16px;">
+            <img id="qrcodeImage" style="max-width: 260px; width: 100%; height: auto;" alt="二维码">
+            <div id="qrcodeFallback" style="display:none; color:#909399; font-size:13px; margin-top:10px; word-break: break-all;"></div>
+        </div>
+        <div style="color:#606266; font-size: 13px; line-height: 1.6; margin-top: 14px; padding: 10px 12px; background:#ecf5ff; border-radius: 8px;">
+            💡 使用手机（微信/相机/浏览器）扫描二维码，在同一 Wi-Fi 网络下即可打开上传页面，选择本地照片发送。
+            <div style="margin-top: 6px; color:#909399; font-size: 12px;">链接：<span id="qrcodeUrl" style="color:#409eff; word-break: break-all;"></span></div>
+        </div>
+        <div style="margin-top: 16px; display:flex; gap: 10px;">
+            <button class="btn btn-secondary" style="flex:1; padding: 8px 12px;" onclick="refreshQrcodeInModal()">🔄 刷新二维码</button>
+            <button class="btn btn-primary" style="flex:1; padding: 8px 12px;" onclick="refreshItemUploadImagesInModal()">📥 刷新图片列表</button>
+        </div>
+    </div>
+</div>
+
 <script>
     let currentManualItems = [];
     let currentConfirmingItem = null;
     let isTestMode = false;
     let currentTestIndex = 0;
+    // 记录每个测试项已加载的上传图片
+    let itemImagesCache = {};
+    // 当前打开二维码弹窗的测试项
+    let currentQrcodeItemName = null;
 
     // 页面加载时获取人工测试配置和状态
     (function() {
@@ -57,7 +82,12 @@
         .then(data => {
             if (data.success) {
                 currentManualItems = data.items;
-                renderManualTestItems(data.items, data.task_status, data.task_time || {}, data.task_notes || {});
+                // 预加载每个测试项的上传图片
+                const names = data.items.map(i => (i.name || i));
+                const loads = names.map(n => loadItemImages(n));
+                Promise.all(loads).then(() => {
+                    renderManualTestItems(data.items, data.task_status, data.task_time || {}, data.task_notes || {});
+                });
             } else {
                 document.getElementById('manual-test-items-container').innerHTML = '<p style="text-align: center; color: red;">加载测试项失败: ' + (data.error || '未知错误') + '</p>';
             }
@@ -66,11 +96,12 @@
             console.error('Error:', error);
             document.getElementById('manual-test-items-container').innerHTML = '<p style="text-align: center; color: red;">加载测试项失败</p>';
         });
-        
+
         // 添加模态框关闭事件监听器
         document.getElementById('closeModal').addEventListener('click', closeImageModal);
         document.getElementById('closeNoteModal').addEventListener('click', closeNoteModal);
-        
+        document.getElementById('closeQrcodeModal').addEventListener('click', closeQrcodeModal);
+
         // 点击模态框外部关闭
         window.addEventListener('click', function(event) {
             const modal = document.getElementById('imageModal');
@@ -80,6 +111,10 @@
             const noteModal = document.getElementById('noteModal');
             if (event.target === noteModal) {
                 closeNoteModal();
+            }
+            const qrModal = document.getElementById('qrcodeModal');
+            if (event.target === qrModal) {
+                closeQrcodeModal();
             }
         });
     })();
@@ -98,6 +133,18 @@
         return 'manual-item-note-' + encodeURIComponent(itemName).replace(/%/g, '_');
     }
 
+    function loadItemImages(itemName) {
+        return fetch('/get_manual_upload_images?item_name=' + encodeURIComponent(itemName))
+            .then(r => r.json())
+            .then(d => {
+                if (d && d.success) {
+                    itemImagesCache[itemName] = d.images || [];
+                }
+                return itemImagesCache[itemName] || [];
+            })
+            .catch(() => []);
+    }
+
     function renderManualTestItems(items, status, timeMap, noteMap) {
         const container = document.getElementById('manual-test-items-container');
         container.innerHTML = '';
@@ -108,7 +155,7 @@
         }
 
         const itemsToRender = isTestMode ? [items[currentTestIndex]] : items;
-        
+
         itemsToRender.forEach((item, idx) => {
             const actualIndex = isTestMode ? currentTestIndex : idx;
             const itemName = item.name || item;
@@ -119,62 +166,71 @@
             const itemTime = (timeMap && timeMap[itemName]) ? timeMap[itemName] : '';
             const itemNote = (noteMap && noteMap[itemName]) ? noteMap[itemName] : '';
             const itemImage = item.image || null;
-            
+
             const itemDiv = document.createElement('div');
             itemDiv.style.cssText = 'margin-bottom: 20px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);';
-            
+
             const contentDiv = document.createElement('div');
             contentDiv.style.cssText = 'margin-bottom: 15px;';
-            
+
             // Title with dot
             const titleContainer = document.createElement('div');
-            titleContainer.style.cssText = 'display: flex; align-items: center; margin-bottom: 12px;';
-            
+            titleContainer.style.cssText = 'display: flex; align-items: center; margin-bottom: 12px; flex-wrap: wrap;';
+
             const dot = document.createElement('span');
             dot.style.cssText = 'display: inline-block; width: 8px; height: 8px; background-color: #007bff; border-radius: 50%; margin-right: 12px; flex-shrink: 0;';
-            
+
             const title = document.createElement('h3');
             title.style.cssText = 'margin: 0; color: #2c3e50; font-size: 18px; font-weight: 600; line-height: 1.2;';
             title.textContent = itemName;
-            
+
+            // 上传图片按钮（放在标题旁）
+            const uploadBtn = document.createElement('button');
+            uploadBtn.style.cssText = 'margin-left: auto; padding: 6px 14px; background: linear-gradient(135deg, #2b7cff, #00a3ff); color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 6px rgba(43, 124, 255, 0.25);';
+            uploadBtn.textContent = '📷 上传图片';
+            uploadBtn.onclick = function() {
+                openQrcodeModal(itemName);
+            };
+
             titleContainer.appendChild(dot);
             titleContainer.appendChild(title);
+            titleContainer.appendChild(uploadBtn);
             contentDiv.appendChild(titleContainer);
-            
+
             if (itemDesc) {
                 const descContainer = document.createElement('div');
                 descContainer.style.cssText = 'margin-left: 20px; padding: 10px 15px; background-color: #e7f3ff; border-radius: 6px; border-left: 3px solid #007bff;';
-                
+
                 const descLabel = document.createElement('div');
                 descLabel.style.cssText = 'font-size: 12px; color: #0066cc; margin-bottom: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;';
                 descLabel.textContent = '测试步骤';
-                
+
                 const desc = document.createElement('div');
                 desc.style.cssText = 'margin: 0; color: #555; font-size: 13px; line-height: 1.6; white-space: pre-wrap;';
                 desc.textContent = itemDesc;
-                
+
                 descContainer.appendChild(descLabel);
                 descContainer.appendChild(desc);
                 contentDiv.appendChild(descContainer);
             }
-            
+
             if (itemExpected) {
                 const expectedContainer = document.createElement('div');
                 expectedContainer.style.cssText = 'margin-left: 20px; padding: 10px 15px; background-color: #f8f9fa; border-radius: 6px; border-left: 3px solid #e9ecef; margin-top: 10px;';
-                
+
                 const expectedLabel = document.createElement('div');
                 expectedLabel.style.cssText = 'font-size: 12px; color: #adb5bd; margin-bottom: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;';
                 expectedLabel.textContent = '预期结果';
-                
+
                 const expected = document.createElement('div');
                 expected.style.cssText = 'margin: 0; color: #555; font-size: 13px; line-height: 1.6; white-space: pre-wrap;';
                 expected.textContent = itemExpected;
-                
+
                 expectedContainer.appendChild(expectedLabel);
                 expectedContainer.appendChild(expected);
                 contentDiv.appendChild(expectedContainer);
             }
-            
+
             // Add image button if image exists
             if (itemImage) {
                 const imageButton = document.createElement('button');
@@ -185,16 +241,41 @@
                 };
                 contentDiv.appendChild(imageButton);
             }
-            
+
+            // === 已上传图片区 ===
+            const uploadArea = document.createElement('div');
+            uploadArea.id = 'upload-area-' + encodeURIComponent(itemName).replace(/%/g, '_');
+            uploadArea.style.cssText = 'margin-left: 20px; margin-top: 12px; padding: 10px 12px; background-color: #f5f7fa; border-radius: 6px;';
+            const uploadHeader = document.createElement('div');
+            uploadHeader.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;';
+            const uploadLabel = document.createElement('span');
+            uploadLabel.style.cssText = 'font-size: 12px; color: #606266; font-weight: 600;';
+            uploadLabel.textContent = '上传图片 (' + (itemImagesCache[itemName] || []).length + ')';
+            const refreshBtn = document.createElement('button');
+            refreshBtn.style.cssText = 'padding: 3px 10px; background: transparent; color: #409eff; border: 1px solid #b3d8ff; border-radius: 4px; font-size: 12px; cursor: pointer;';
+            refreshBtn.textContent = '🔄 刷新';
+            refreshBtn.onclick = function () {
+                loadItemImages(itemName).then(() => renderItemUploadArea(itemName));
+            };
+            uploadHeader.appendChild(uploadLabel);
+            uploadHeader.appendChild(refreshBtn);
+            uploadArea.appendChild(uploadHeader);
+
+            const thumbs = document.createElement('div');
+            thumbs.id = 'thumbs-' + encodeURIComponent(itemName).replace(/%/g, '_');
+            thumbs.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px;';
+            uploadArea.appendChild(thumbs);
+            contentDiv.appendChild(uploadArea);
+
             const optionsRowDiv = document.createElement('div');
             optionsRowDiv.style.cssText = 'display: flex; align-items: center; gap: 15px; margin-top: 15px; padding-left: 20px; flex-wrap: wrap;';
-            
+
             // Success Option
             const successLabel = createOption(itemName, 'success', '成功', '#28a745', itemStatus === 'success');
-            
+
             // Failed Option
             const failedLabel = createOption(itemName, 'failed', '失败', '#dc3545', itemStatus === 'failed');
-            
+
             // Note button
             const noteButton = document.createElement('button');
             noteButton.style.cssText = 'margin-left: 10px; padding: 2px 4px; background-color: #6c757d; color: white; border: none; border-radius: 3px; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center;';
@@ -202,38 +283,102 @@
             noteButton.onclick = function() {
                 openNoteModal(itemName, itemNote);
             };
-            
+
             // Note display
             const noteSpan = document.createElement('span');
             noteSpan.id = manualNoteElementId(itemName);
             noteSpan.style.cssText = 'margin-left: 0px; font-size: 12px; color: #6c757d; flex: 1; min-width: 200px; display: inline-flex; align-items: center;';
             noteSpan.textContent = itemNote || '无';
-            
+
             const timeSpan = document.createElement('span');
             timeSpan.id = manualTimeElementId(itemName);
             timeSpan.style.cssText = 'font-size: 12px; color: #6c757d; white-space: nowrap; text-align: right; margin-left: auto;';
             timeSpan.textContent = itemTime || '';
-            
+
             optionsRowDiv.appendChild(successLabel);
             optionsRowDiv.appendChild(failedLabel);
             optionsRowDiv.appendChild(noteButton);
             optionsRowDiv.appendChild(noteSpan);
             optionsRowDiv.appendChild(timeSpan);
-            
+
             itemDiv.appendChild(contentDiv);
             itemDiv.appendChild(optionsRowDiv);
             container.appendChild(itemDiv);
+
+            // 渲染缩略图
+            renderItemUploadArea(itemName);
         });
 
         // 重新绑定事件监听器
         bindRadioEvents();
     }
 
+    function renderItemUploadArea(itemName) {
+        const safeKey = encodeURIComponent(itemName).replace(/%/g, '_');
+        const thumbs = document.getElementById('thumbs-' + safeKey);
+        if (!thumbs) return;
+        const uploadArea = document.getElementById('upload-area-' + safeKey);
+        const images = itemImagesCache[itemName] || [];
+
+        // 无图片则不展示整个上传图片区
+        if (uploadArea) {
+            uploadArea.style.display = images.length === 0 ? 'none' : '';
+        }
+
+        // 更新计数
+        if (uploadArea) {
+            const headerLabel = uploadArea.querySelector('span');
+            if (headerLabel) headerLabel.textContent = '上传图片 (' + images.length + ')';
+        }
+
+        thumbs.innerHTML = '';
+        if (images.length === 0) {
+            return;
+        }
+
+        images.forEach(img => {
+            const div = document.createElement('div');
+            div.style.cssText = 'position: relative; width: 100%; padding-bottom: 100%; border-radius: 6px; overflow: hidden; background: #fff; border: 1px solid #e4e7ed; cursor: zoom-in;';
+            const im = document.createElement('img');
+            im.src = img.url;
+            im.alt = img.name;
+            im.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;';
+            const del = document.createElement('button');
+            del.textContent = '×';
+            del.title = '删除';
+            del.style.cssText = 'position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; background: rgba(245, 108, 108, 0.9); color: #fff; border: none; border-radius: 50%; font-size: 14px; line-height: 18px; cursor: pointer; z-index: 2;';
+            del.onclick = function(ev) {
+                ev.stopPropagation();
+                if (!confirm('确定删除这张图片？')) return;
+                fetch('/delete_manual_upload_image', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({item_name: itemName, filename: img.name})
+                }).then(r => r.json()).then(d => {
+                    if (d && d.success) {
+                        loadItemImages(itemName).then(() => renderItemUploadArea(itemName));
+                    } else {
+                        alert('删除失败：' + (d.error || '未知错误'));
+                    }
+                }).catch(err => alert('删除失败'));
+            };
+            div.onclick = function () {
+                // 点击缩略图放大查看
+                const modal = document.getElementById('imageModal');
+                document.getElementById('modalImage').src = img.url;
+                modal.style.display = 'block';
+            };
+            div.appendChild(im);
+            div.appendChild(del);
+            thumbs.appendChild(div);
+        });
+    }
+
     // 打开图片模态框
     function openImageModal(imageName) {
         const modal = document.getElementById('imageModal');
         const modalImage = document.getElementById('modalImage');
-        modalImage.src = `/image/${imageName}`;
+        modalImage.src = '/image/' + imageName;
         modal.style.display = 'block';
     }
 
@@ -258,12 +403,12 @@
     function saveNote() {
         const itemName = document.getElementById('noteItemName').value;
         const noteContent = document.getElementById('noteContent').value.trim();
-        
+
         if (!itemName) {
             showAutoHideMessage('测试项名称为空');
             return;
         }
-        
+
         const payload = {
             test_type: 'manual',
             data: {}
@@ -271,7 +416,7 @@
         payload.data[itemName] = {
             note: noteContent
         };
-        
+
         fetch('/end_test', {
             method: 'POST',
             headers: {
@@ -282,7 +427,6 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // 更新页面上的备注显示
                 const noteSpan = document.getElementById(manualNoteElementId(itemName));
                 if (noteSpan) {
                     noteSpan.textContent = noteContent || '无';
@@ -298,10 +442,103 @@
         });
     }
 
+    // ============ 二维码弹窗 ============
+    let qrcodePollingTimer = null;
+    let qrcodePollingStartCount = 0;
+
+    function startQrcodePolling(itemName) {
+        stopQrcodePolling();
+        // 记录弹窗打开时该测试项已有图片数（作为基线）
+        const existing = itemImagesCache[itemName] || [];
+        qrcodePollingStartCount = existing.length;
+        qrcodePollingTimer = setInterval(() => {
+            if (!currentQrcodeItemName) return;
+            loadItemImages(currentQrcodeItemName).then(() => {
+                const now = (itemImagesCache[currentQrcodeItemName] || []).length;
+                if (now > qrcodePollingStartCount) {
+                    // 检测到手机端有新上传：自动关闭二维码弹窗并刷新主页面缩略图
+                    showAutoHideMessage('检测到新上传图片，二维码已自动关闭');
+                    closeQrcodeModal();
+                }
+            });
+        }, 3000);
+    }
+
+    function stopQrcodePolling() {
+        if (qrcodePollingTimer) {
+            clearInterval(qrcodePollingTimer);
+            qrcodePollingTimer = null;
+        }
+    }
+
+    function openQrcodeModal(itemName) {
+        currentQrcodeItemName = itemName;
+        document.getElementById('qrcodeItemName').textContent = '测试项：' + itemName;
+        const modal = document.getElementById('qrcodeModal');
+        const img = document.getElementById('qrcodeImage');
+        const urlEl = document.getElementById('qrcodeUrl');
+        const fallback = document.getElementById('qrcodeFallback');
+        img.style.display = 'none';
+        fallback.style.display = 'none';
+        img.src = '';
+        urlEl.textContent = '生成中...';
+        modal.style.display = 'block';
+
+        fetch('/manual_upload/qrcode?item_name=' + encodeURIComponent(itemName))
+            .then(r => r.json())
+            .then(d => {
+                if (d && d.success) {
+                    if (d.qrcode_url) {
+                        img.src = d.qrcode_url;
+                        img.style.display = 'inline-block';
+                    } else {
+                        fallback.style.display = 'block';
+                        fallback.textContent = '（未安装 qrcode 库，二维码生成失败）';
+                    }
+                    urlEl.textContent = d.upload_url || '';
+                } else {
+                    urlEl.textContent = '生成失败：' + (d.error || '未知错误');
+                }
+            })
+            .catch(err => {
+                urlEl.textContent = '生成失败';
+            });
+
+        // 打开二维码弹窗时先刷新一次图片列表作为基线，再启动轮询
+        loadItemImages(itemName).then(() => {
+            startQrcodePolling(itemName);
+        });
+    }
+
+    function closeQrcodeModal() {
+        stopQrcodePolling();
+        document.getElementById('qrcodeModal').style.display = 'none';
+        // 关闭二维码弹窗后，刷新当前测试项的图片列表
+        if (currentQrcodeItemName) {
+            loadItemImages(currentQrcodeItemName).then(() => renderItemUploadArea(currentQrcodeItemName));
+            currentQrcodeItemName = null;
+        }
+    }
+
+    function refreshQrcodeInModal() {
+        if (currentQrcodeItemName) {
+            openQrcodeModal(currentQrcodeItemName);
+        }
+    }
+
+    function refreshItemUploadImagesInModal() {
+        if (currentQrcodeItemName) {
+            loadItemImages(currentQrcodeItemName).then(() => {
+                renderItemUploadArea(currentQrcodeItemName);
+                showAutoHideMessage('图片列表已刷新');
+            });
+        }
+    }
+
     function createOption(name, value, text, color, isChecked) {
         const label = document.createElement('label');
         label.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 16px; border-radius: 4px; transition: all 0.3s;';
-        
+
         const input = document.createElement('input');
         input.type = 'radio';
         input.name = name;
@@ -309,18 +546,17 @@
         input.style.accentColor = color;
         if (isChecked) {
             input.checked = true;
-            // Apply checked style immediately
             label.style.backgroundColor = color;
             label.style.color = 'white';
         }
-        
+
         const span = document.createElement('span');
         span.style.fontSize = '14px';
         span.textContent = text;
-        
+
         label.appendChild(input);
         label.appendChild(span);
-        
+
         return label;
     }
 
@@ -329,11 +565,11 @@
             radio.addEventListener('change', function() {
                 const label = this.closest('label');
                 const name = this.name;
-                
+
                 if (this.value === 'success') {
                     const item = currentManualItems.find(i => (i.name || i) === name);
                     const confirmContent = item ? item.confirm_content : null;
-                    
+
                     if (confirmContent && confirmContent.trim()) {
                         const confirmModal = document.createElement('div');
                         confirmModal.style.cssText = `
@@ -348,7 +584,7 @@
                             align-items: center;
                             justify-content: center;
                         `;
-                        
+
                         const modalContent = document.createElement('div');
                         modalContent.style.cssText = `
                             background-color: white;
@@ -358,18 +594,18 @@
                             width: 90%;
                             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
                         `;
-                        
+
                         const title = document.createElement('h3');
                         title.style.cssText = 'margin-top: 0; margin-bottom: 15px; color: #333; font-size: 18px;';
                         title.textContent = '确认测试通过';
-                        
+
                         const content = document.createElement('p');
                         content.style.cssText = 'color: #666; line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap;';
                         content.textContent = confirmContent;
-                        
+
                         const buttonContainer = document.createElement('div');
                         buttonContainer.style.cssText = 'display: flex; justify-content: flex-end; gap: 10px;';
-                        
+
                         const cancelBtn = document.createElement('button');
                         cancelBtn.style.cssText = `
                             padding: 8px 20px;
@@ -390,7 +626,7 @@
                             });
                             document.body.removeChild(confirmModal);
                         };
-                        
+
                         const confirmBtn = document.createElement('button');
                         confirmBtn.style.cssText = `
                             padding: 8px 20px;
@@ -414,7 +650,7 @@
                             document.body.removeChild(confirmModal);
                             goToNextInTestMode();
                         };
-                        
+
                         buttonContainer.appendChild(cancelBtn);
                         buttonContainer.appendChild(confirmBtn);
                         modalContent.appendChild(title);
@@ -422,7 +658,7 @@
                         modalContent.appendChild(buttonContainer);
                         confirmModal.appendChild(modalContent);
                         document.body.appendChild(confirmModal);
-                        
+
                         return;
                     } else {
                         document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
@@ -461,11 +697,11 @@
     function startTestMode() {
         isTestMode = true;
         currentTestIndex = 0;
-        
+
         document.getElementById('start-test-btn').style.display = 'none';
         document.getElementById('cancel-test-btn').style.display = 'inline-block';
         document.getElementById('manual-test-nav').style.display = 'block';
-        
+
         renderManualTestItems(currentManualItems, {}, {}, {});
         updateNavButtons();
     }
@@ -473,11 +709,11 @@
     // 取消测试模式
     function cancelTestMode() {
         isTestMode = false;
-        
+
         document.getElementById('start-test-btn').style.display = 'inline-block';
         document.getElementById('cancel-test-btn').style.display = 'none';
         document.getElementById('manual-test-nav').style.display = 'none';
-        
+
         // 重新加载数据并渲染所有测试项
         fetch('/get_manual_info')
         .then(response => response.json())
@@ -493,7 +729,7 @@
         const prevBtn = document.getElementById('prev-btn');
         const nextBtn = document.getElementById('next-btn');
         const progress = document.getElementById('test-progress');
-        
+
         prevBtn.disabled = currentTestIndex === 0;
         nextBtn.disabled = currentTestIndex >= currentManualItems.length - 1;
         progress.textContent = `${currentTestIndex + 1} / ${currentManualItems.length}`;
@@ -528,7 +764,6 @@
 
     // 显示自动消失的提示框
     function showAutoHideMessage(message) {
-        // 创建提示框元素
         const messageBox = document.createElement('div');
         messageBox.style.cssText = `
             position: fixed;
@@ -548,14 +783,11 @@
             min-width: 200px;
         `;
         messageBox.textContent = message;
-        
-        // 添加到页面
+
         document.body.appendChild(messageBox);
-        
-        // 1秒后开始淡出
+
         setTimeout(() => {
             messageBox.style.opacity = '0';
-            // 淡出后移除元素
             setTimeout(() => {
                 document.body.removeChild(messageBox);
             }, 500);
@@ -569,7 +801,7 @@
             data: {}
         };
         payload.data[itemName] = value;
-        
+
         fetch('/end_test', {
             method: 'POST',
             headers: {
@@ -603,7 +835,7 @@
 
         const testResults = {};
         let completedCount = 0;
-        
+
         // 收集已完成的测试项结果
         currentManualItems.forEach(test => {
             const testName = test.name || test;
@@ -613,18 +845,18 @@
                 completedCount++;
             }
         });
-        
+
         if (completedCount !== currentManualItems.length) {
             showAutoHideMessage('请先完成所有测试项');
             return;
         }
-        
+
         const overallResult = Object.values(testResults).every(result => result === 'success') ? 'success' : 'failed';
         const requestData = {
             test_type: 'manual',
             result: overallResult
         };
-        
+
         // 保存测试结果
         fetch('/end_test', {
             method: 'POST',

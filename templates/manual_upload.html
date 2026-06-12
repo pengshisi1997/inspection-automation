@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>上传测试图片 - {{ item_name }}</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f4f6fa;
+            color: #333;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #2b7cff, #00a3ff);
+            color: #fff;
+            padding: 18px 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 500;
+        }
+        .header .sub {
+            margin-top: 6px;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+        .container {
+            padding: 16px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .label {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #dcdfe6;
+            border-radius: 8px;
+            font-size: 15px;
+            background: #fafafa;
+            outline: none;
+        }
+        input[type="text"]:focus {
+            border-color: #2b7cff;
+            background: #fff;
+        }
+        .upload-btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #2b7cff, #00a3ff);
+            color: #fff;
+            text-align: center;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(43, 124, 255, 0.25);
+        }
+        .upload-btn:active {
+            opacity: 0.85;
+        }
+        .upload-btn:disabled {
+            background: #c0c4cc;
+            box-shadow: none;
+        }
+        .preview {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .preview-item {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f0f2f5;
+        }
+        .preview-item img {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .preview-item .remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 22px;
+            height: 22px;
+            background: rgba(0, 0, 0, 0.55);
+            color: #fff;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 22px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #909399;
+            text-align: center;
+        }
+        .success {
+            background: #f0f9eb;
+            color: #67c23a;
+            border: 1px solid #e1f3d8;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .error {
+            background: #fef0f0;
+            color: #f56c6c;
+            border: 1px solid #fde2e2;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .done-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: #67c23a;
+            color: #fff;
+            text-align: center;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            cursor: pointer;
+            margin-top: 14px;
+        }
+        .hidden { display: none; }
+        .uploaded-list {
+            margin-top: 8px;
+        }
+        .uploaded-list .title {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📷 上传测试图片</h1>
+        <div class="sub">测试项：<span id="itemNameText">{{ item_name }}</span></div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="label">测试项名称</div>
+            <input type="text" id="itemName" value="{{ item_name }}" readonly>
+
+            <div class="label" style="margin-top:14px;">机器人 IP / 编号</div>
+            <input type="text" id="ipInput" value="{{ ip or '' }}" placeholder="例如 192.168.1.100" autocomplete="off">
+
+            <input type="file" id="fileInput" accept="image/*" capture="environment" multiple style="display:none;">
+            <button class="upload-btn" id="pickBtn">📸 选择/拍摄照片</button>
+
+            <div class="preview" id="preview"></div>
+
+            <div class="status" id="status"></div>
+
+            <button class="upload-btn" id="uploadBtn" disabled style="margin-top: 14px;">上传图片</button>
+        </div>
+
+        <div class="card" id="uploadedCard">
+            <div class="uploaded-list">
+                <div class="title" id="uploadedTitle">已上传</div>
+                <div class="preview" id="uploadedList"></div>
+            </div>
+            <button class="done-btn" id="doneBtn">🔄 刷新已上传列表</button>
+        </div>
+    </div>
+
+    <!-- 上传完成覆盖层：成功后显示提示，但不自动退出，用户可继续上传 -->
+    <div id="doneOverlay" style="display:none; position: fixed; inset: 0; background: rgba(255,255,255,0.96); z-index: 3000; align-items: center; justify-content: center; flex-direction: column; padding: 40px 20px; text-align: center;">
+        <div style="font-size: 88px; line-height: 1;">✅</div>
+        <h2 style="color:#2c3e50; margin: 20px 0 8px 0; font-size: 26px;">上传成功</h2>
+        <div style="color:#606266; font-size: 15px; margin-bottom: 24px;" id="doneSummary">图片已上传，桌面端二维码已自动关闭</div>
+        <button class="upload-btn" id="doneCloseBtn" style="max-width: 260px; margin-top: 10px;">继续上传</button>
+    </div>
+
+    <script>
+        (function () {
+            const itemName = document.getElementById('itemName').value || '{{ item_name }}';
+            const ipInput = document.getElementById('ipInput');
+            const fileInput = document.getElementById('fileInput');
+            const pickBtn = document.getElementById('pickBtn');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const statusEl = document.getElementById('status');
+            const preview = document.getElementById('preview');
+            const uploadedList = document.getElementById('uploadedList');
+            const doneBtn = document.getElementById('doneBtn');
+            const uploadedTitle = document.getElementById('uploadedTitle');
+            const doneOverlay = document.getElementById('doneOverlay');
+            const doneCloseBtn = document.getElementById('doneCloseBtn');
+            const doneSummary = document.getElementById('doneSummary');
+
+            // 从 URL 中读取 ip 参数，优先覆盖模板默认值
+            const urlParams = new URLSearchParams(window.location.search);
+            const ipFromUrl = urlParams.get('ip') || '';
+            if (ipFromUrl) ipInput.value = ipFromUrl;
+
+            let pendingFiles = [];
+            let closeTimer = null;
+
+            pickBtn.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files || []);
+                files.forEach(f => {
+                    const url = URL.createObjectURL(f);
+                    pendingFiles.push({ file: f, previewUrl: url, key: Math.random().toString(36).slice(2) });
+                });
+                renderPreview();
+                fileInput.value = '';
+            });
+
+            function renderPreview() {
+                preview.innerHTML = '';
+                pendingFiles.forEach(pf => {
+                    const div = document.createElement('div');
+                    div.className = 'preview-item';
+                    div.innerHTML = `
+                        <img src="${pf.previewUrl}" alt="preview">
+                        <button class="remove" data-key="${pf.key}">×</button>
+                    `;
+                    preview.appendChild(div);
+                });
+                preview.querySelectorAll('.remove').forEach(btn => {
+                    btn.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        const k = btn.getAttribute('data-key');
+                        pendingFiles = pendingFiles.filter(p => p.key !== k);
+                        renderPreview();
+                    });
+                });
+                uploadBtn.disabled = pendingFiles.length === 0;
+                statusEl.textContent = pendingFiles.length
+                    ? '已选择 ' + pendingFiles.length + ' 张图片，可点击"上传图片"发送'
+                    : '';
+            }
+
+            function showDoneAndClose(savedCount) {
+                doneSummary.textContent = '成功上传 ' + savedCount + ' 张图片，桌面端二维码已自动关闭';
+                doneOverlay.style.display = 'flex';
+                // 3 秒后自动收起，手机页面保持，方便继续上传
+                clearTimeout(closeTimer);
+                closeTimer = setTimeout(() => {
+                    doneOverlay.style.display = 'none';
+                }, 3000);
+            }
+
+            doneCloseBtn.addEventListener('click', () => {
+                clearTimeout(closeTimer);
+                doneOverlay.style.display = 'none';
+                // 手动点"继续上传"也刷新一次已上传列表，确保手机端看到最新
+                loadUploadedList();
+            });
+
+            uploadBtn.addEventListener('click', async () => {
+                if (pendingFiles.length === 0) return;
+                uploadBtn.disabled = true;
+                statusEl.textContent = '正在上传 ' + pendingFiles.length + ' 张图片...';
+
+                const formData = new FormData();
+                formData.append('item_name', itemName);
+                formData.append('ip', ipInput.value.trim() || '');
+                pendingFiles.forEach(pf => {
+                    formData.append('images', pf.file, pf.file.name || 'image.jpg');
+                });
+
+                try {
+                    const res = await fetch('/manual_upload_api', {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    const data = await res.json();
+                    if (data && data.success && data.saved && data.saved.length) {
+                        pendingFiles.forEach(pf => URL.revokeObjectURL(pf.previewUrl));
+                        pendingFiles = [];
+                        renderPreview();
+                        statusEl.textContent = '';
+                        loadUploadedList();
+                        // 上传成功后显示完成覆盖层并自动退出
+                        showDoneAndClose(data.saved.length);
+                    } else {
+                        throw new Error((data && data.error) || '上传失败');
+                    }
+                } catch (err) {
+                    statusEl.textContent = '';
+                    showMessage('❌ ' + (err.message || '上传失败'), 'error');
+                } finally {
+                    uploadBtn.disabled = pendingFiles.length === 0;
+                }
+            });
+
+            function loadUploadedList() {
+                const ip = (ipInput.value || '').trim();
+                let url = '/get_manual_upload_images?item_name=' + encodeURIComponent(itemName);
+                if (ip) url += '&ip=' + encodeURIComponent(ip);
+                fetch(url)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data || !data.success) throw new Error((data && data.error) || '列表加载失败');
+                        const imgs = data.images || [];
+                        uploadedList.innerHTML = '';
+                        uploadedTitle.textContent = '已上传（共 ' + imgs.length + ' 张）';
+                        if (imgs.length === 0) {
+                            const div = document.createElement('div');
+                            div.style.cssText = 'grid-column: 1 / -1; color:#909399; font-size:13px; text-align:center; padding:8px 0;';
+                            div.textContent = '还没有上传的图片';
+                            uploadedList.appendChild(div);
+                            return;
+                        }
+                        imgs.forEach(img => {
+                            const div = document.createElement('div');
+                            div.className = 'preview-item';
+                            div.innerHTML = `
+                                <a href="${img.url}" target="_blank" style="display:block;position:absolute;inset:0;text-decoration:none;">
+                                    <img src="${img.url}" alt="${img.name}">
+                                </a>
+                            `;
+                            uploadedList.appendChild(div);
+                        });
+                    })
+                    .catch(err => showMessage('列表加载失败：' + (err.message || err), 'error'));
+            }
+
+            function showMessage(msg, type) {
+                const div = document.createElement('div');
+                div.className = type === 'success' ? 'success' : 'error';
+                div.textContent = msg;
+                statusEl.parentNode.insertBefore(div, statusEl.nextSibling);
+                setTimeout(() => div.remove(), 4000);
+            }
+
+            doneBtn.addEventListener('click', loadUploadedList);
+
+            // 页面加载时拉一次列表
+            loadUploadedList();
+        })();
+    </script>
+</body>
+</html>

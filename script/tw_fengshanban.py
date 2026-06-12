@@ -14,7 +14,7 @@ class Ligit:
         self.remote_path = '/home/youibot/tmp.py'
         self.ssh = None
 
-    def generate_script_content(self, hex_command):
+    def generate_script_content(self, hex_command, port="/dev/ttyACM1"):
         return f'''# -*- coding: utf-8 -*-
         
 import serial
@@ -26,7 +26,7 @@ def hex_to_bytes(hex_str):
     return bytes(bytearray.fromhex(hex_str))
 
 def main():
-    port = '/dev/ttyACM1'
+    port = '{port}'
     baudrate = 9600
     timeout = 2
     responses = {{}}
@@ -91,18 +91,18 @@ if __name__ == "__main__":
                 print(f"连接到远程主机失败: {e}")
                 self.ssh = None
 
-    def upload_script(self, hex_command):
+    def upload_script(self, hex_command, port="/dev/ttyACM1"):
         if self.ssh is None:
             print("SSH 连接尚未建立")
             return
 
         try:
-            script_content = self.generate_script_content(hex_command)
+            script_content = self.generate_script_content(hex_command, port)
             sftp = self.ssh.open_sftp()
             with sftp.file(self.remote_path, 'w') as remote_file:
                 remote_file.write(script_content)
             sftp.close()
-            print("脚本写入成功")
+            print(f"脚本写入成功，使用端口: {port}")
         except Exception as e:
             print(f"上传脚本失败: {e}")
 
@@ -140,8 +140,27 @@ if __name__ == "__main__":
 
     def execute_serial_command(self, host_ip, hex_command):
         self.connect(host_ip)
-        self.upload_script(hex_command)
-        return self.execute_remote_script()
+        
+        # 首先尝试使用 ttyACM1 端口
+        print("\n尝试使用端口: /dev/ttyACM1")
+        self.upload_script(hex_command, "/dev/ttyACM1")
+        result = self.execute_remote_script()
+        
+        # 检查是否获取到数据
+        has_data = False
+        if result and isinstance(result, dict):
+            for cmd, response in result.items():
+                if response:
+                    has_data = True
+                    break
+        
+        # 如果没有获取到数据，尝试使用 ttyACM2 端口
+        if not has_data:
+            print("\n未获取到数据，尝试使用备用端口: /dev/ttyACM2")
+            self.upload_script(hex_command, "/dev/ttyACM2")
+            result = self.execute_remote_script()
+        
+        return result
     
     def get_fan_board_temperature(self, host_ip):
         """获取风扇板温度"""
@@ -183,7 +202,7 @@ if __name__ == "__main__":
 if __name__ == "__main__":
     ssh_robot = Ligit()
     # 传入IP，获取风扇板温度
-    temperature = ssh_robot.get_fan_board_temperature("192.168.17.160")
+    temperature = ssh_robot.get_fan_board_temperature("192.168.17.146")
     # 打印返回结果
     print("\n=== 返回结果 ===")
     if temperature is not None:

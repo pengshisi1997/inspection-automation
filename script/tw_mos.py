@@ -2,6 +2,11 @@ import socket
 import json
 import time
 import os
+import sys
+
+# 引入全局路径配置
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config.model_config import IMAGE_YUNTAI_DIR, TEST_RECORD_DIR, get_image_yuntai_dir, get_result_file_path
 
 
 class MosPTZController:
@@ -233,7 +238,10 @@ class MosPTZController:
             # 获取 SN 号
             sn_name = "UNKNOWN_SN"
             try:
-                result_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_record", f"{self.host}.json")
+                result_file = get_result_file_path(self.host)
+                if not os.path.exists(result_file):
+                    # 兼容旧路径
+                    result_file = os.path.join(TEST_RECORD_DIR, f"{self.host}.json")
                 if os.path.exists(result_file):
                     with open(result_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
@@ -245,8 +253,8 @@ class MosPTZController:
             except Exception:
                 pass
             
-            # 创建 image_yuntai 目录
-            local_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "image_yuntai")
+            # 按IP区分保存到 test_record/<ip>/image_yuntai/ 目录下
+            local_dir = get_image_yuntai_dir(self.host)
             if not os.path.exists(local_dir):
                 os.makedirs(local_dir)
             
