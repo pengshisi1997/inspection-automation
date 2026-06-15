@@ -44,6 +44,102 @@ app.register_blueprint(admin_bp)
 app.secret_key = 'your-secret-key'  # 设置secret key用于session加密
 
 
+# 需要显式过滤掉（避免日志过于嘈杂）的路径前缀
+_NOISE_PREFIXES = (
+    '/static/',
+    '/image/',
+    '/manual_upload_images/',
+    '/get_lidar_field',
+    '/get_ptz_image',
+    '/get_integrated_file',
+    '/get_temperature_data',
+    '/favicon',
+)
+
+# 被视为"写操作"的路径：会记录请求体
+_WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def _get_tester():
+    """从 session 中获取当前测试人员。优先显式字段 tester，否则用 username。"""
+    return (
+        session.get('tester')
+        or session.get('username')
+        or session.get('user')
+        or None
+    )
+
+
+def _summarize_body():
+    """安全地读取请求体摘要，避免大请求体污染日志。"""
+    try:
+        if request.is_json:
+            data = request.get_json(silent=True)
+            if data is None:
+                return ""
+            text = str(data)
+        else:
+            form = request.form.to_dict(flat=False) if request.form else {}
+            files = [f.filename for f in request.files.getlist('images') or []]
+            if files:
+                form['_files'] = files
+            text = str(form) if form else ""
+        if len(text) > 300:
+            text = text[:300] + "...(已截断)"
+        return text
+    except Exception:
+        return "(无法读取请求体)"
+
+
+@app.before_request
+def log_all_actions():
+    """全局钩子：记录所有前端操作（谁、做了什么、来自哪、参数）。"""
+    try:
+        path = request.path
+        # 过滤静态资源/轮询类接口
+        if path is None:
+            return
+        for prefix in _NOISE_PREFIXES:
+            if path.startswith(prefix):
+                return
+
+        tester = _get_tester()
+        method = request.method
+        remote = request.remote_addr or ""
+        qs = request.query_string.decode("utf-8", errors="replace") if request.query_string else ""
+
+        action = f"{method} {path}"
+        parts = []
+        if qs:
+            parts.append(f"query={qs[:200]}")
+        if method in _WRITE_METHODS:
+            body = _summarize_body()
+            if body:
+                parts.append(f"body={body}")
+        if remote:
+            parts.append(f"client={remote}")
+        detail = " ; ".join(parts) if parts else None
+        log.action(tester, action, detail)
+    except Exception:
+        # 日志失败绝不能影响请求处理
+        pass
+
+
+@app.after_request
+def _inject_tester_to_session(response):
+    """辅助：如果请求中携带 tester 字段（例如 update_robot_info / 登录），
+    将 tester 写入 session，以便后续操作日志能识别用户。"""
+    try:
+        path = request.path or ""
+        if request.method in _WRITE_METHODS and request.is_json:
+            data = request.get_json(silent=True)
+            if isinstance(data, dict) and data.get('tester'):
+                session['tester'] = data['tester']
+    except Exception:
+        pass
+    return response
+
+
 @app.context_processor
 def inject_shared_config():
     return {
@@ -57,7 +153,7 @@ def handle_exception(e):
     error_msg = str(e)
     # 移除无法编码的特殊字符，避免GBK编码错误
     error_msg = error_msg.encode('utf-8', errors='replace').decode('utf-8')
-    log.error(f"全局异常处理: {error_msg}")
+    log.error(f"全局异常处理: {error_msg} (用户={_get_tester() or '未知'}, 路径={request.path})")
     return jsonify({'success': False, 'error': error_msg})
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -481,25 +577,21 @@ def test_anti_collision():
         current_model = robot_info.get('model', '')
         
         # 使用绑定的IP地址
-        log.info(f"防撞条检测 - 机型: {current_model}, IP: {bound_ip}, 类型: {strip_type}")
+        # 操作已由 before_request 统一记录；结果由 end_test 统一记录
         
         # 获取防撞条数据
         v = None
         
         # HSR车型的左右防撞条尝试多种获取方式
         if current_model == 'HSR' and (strip_type == 'left' or strip_type == 'right'):
-            log.info(f"===== HSR防撞条检测开始 =====")
-            log.info(f"机型: {current_model}, IP: {bound_ip}, 类型: {strip_type}")
-            
+
             from script.hsr_bumper import HSRBumperReader
-            
+
             keyword = "leftBumper" if strip_type == 'left' else "rightBumper"
             reader = HSRBumperReader(ip=bound_ip, timeout=2)
             result = reader.get_emergency_stop_status(keyword)
             v = 1 if result else 0
-            
-            log.info(f"HSR {strip_type}防撞条检测结果: {v}")
-            log.info(f"===== HSR防撞条检测结束 =====")
+
         else:
             # 其他情况使用ROS topic方式
             from script.robot_allstatus import SingleTopicOnceReader
@@ -539,14 +631,10 @@ def test_anti_collision():
             # 为MR机型增加stop_status字段检测，或的逻辑
             if current_model == 'MR':
                 stop_status = reader.get_one_frame("stop_status")
-                log.info(f"MR机型检测 - 防撞条值: {v}, stop_status值: {stop_status}")
-                # 如果stop_status为True（1），则v设为1
                 if stop_status == 1:
                     v = 1
-                    log.info(f"MR机型stop_status为True，防撞条结果设为1")
         
         if v is None:
-            log.error(f"防撞条 {strip_type} ({current_model}车型) 未找到对应的数据")
             return jsonify({'success': False, 'error': f'{strip_type}防撞条数据获取失败，请检查配置'})
         
         if check_only:
@@ -777,7 +865,18 @@ def save_light_test_result():
         light_info['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         results['light'] = light_info
         write_result_file(bound_ip, results)
-        
+
+        # 记录结果日志
+        try:
+            log.test_result(
+                _get_tester(),
+                f"light.{light_color}",
+                result,
+                ip=bound_ip,
+            )
+        except Exception:
+            pass
+
         return jsonify({'success': True})
     except Exception as e:
         log.error(f"保存灯光测试结果出错: {str(e)}")
@@ -1073,7 +1172,8 @@ def get_lidar_field():
 def start_test():
     test_type = request.json.get('test_type')
     bound_ip = session.get('bound_ip')
-    
+    tester = _get_tester()
+
     # 版本检测的特殊处理
     if test_type == 'version':
         if not bound_ip:
@@ -1090,11 +1190,9 @@ def start_test():
                 return jsonify({'success': False, 'error': '未获取到机型信息'})
             
             reader = MirrorSystemReader(model=current_model)
-            log.info("MirrorSystemReader创建成功")
 
             needed_fields = get_version_fields_by_model(current_model)
             result = reader.read_fields(bound_ip, needed_fields)
-            log.info(f"读取结果: {result}")
             
             # 自动比较版本值
             test_result = 'success'
@@ -1122,7 +1220,12 @@ def start_test():
             results = read_result_file(bound_ip)
             results['version'] = result
             write_result_file(bound_ip, results)
-            
+
+            try:
+                log.test_result(tester, 'version', test_result, ip=bound_ip)
+            except Exception:
+                pass
+
             return jsonify({'success': True, 'version_info': result})
         except Exception as e:
             log.error(f"错误: {str(e)}")
@@ -1132,7 +1235,6 @@ def start_test():
     
     # 传感器检测的特殊处理
     elif test_type == 'sensor':
-        log.info("开始传感器检测...")
         if not bound_ip:
             return jsonify({'success': False, 'error': '请先绑定IP地址'})
         
@@ -1143,13 +1245,10 @@ def start_test():
             robot_info = results.get('robot_info', {})
             current_model = robot_info.get('model')
             reader = RosTopicReader(bound_ip, model=current_model)
-            log.info("RosTopicReader创建成功")
             sensor_results = reader.get_all_data()
-            log.info(f"传感器检测结果: {sensor_results}")
             
             # 检查是否为NaN的辅助函数
             def is_nan(value):
-                """检查值是否为NaN"""
                 import math
                 try:
                     return math.isnan(float(value))
@@ -1168,11 +1267,8 @@ def start_test():
                 if model_sensors and topic not in model_sensors:
                     continue
                     
-                log.info(f"正在检查传感器: {topic}, 数据: {data}")
-                
                 if data is None or data == '无数据':
                     test_result = 'failed'
-                    log.warning(f"传感器 {topic} 无数据")
                     break
                 
                 # 检查数据中是否包含NaN
@@ -1193,7 +1289,6 @@ def start_test():
                 
                 if has_nan:
                     test_result = 'failed'
-                    log.warning(f"传感器 {topic} 包含NaN")
                     break
                 
                 # 对cpu_hz的特殊处理：HSR机型阈值为2400
@@ -1201,7 +1296,6 @@ def start_test():
                     min_hz = 2400 if current_model == 'HSR' else 2400
                     for hz in data:
                         if hz < min_hz:
-                            log.warning(f"传感器 cpu_hz 值 {hz} 低于阈值 {min_hz}")
                             test_result = 'failed'
                             break
                     if test_result == 'failed':
@@ -1217,7 +1311,6 @@ def start_test():
                 # 对microphone的特殊处理：必须为True才算成功（仅TW机型）
                 if topic == 'microphone' and current_model == 'TW':
                     if data is not True:
-                        log.warning(f"传感器 microphone 不是True")
                         test_result = 'failed'
                         break
             
@@ -1229,7 +1322,12 @@ def start_test():
                 'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             write_result_file(bound_ip, results)
-            
+
+            try:
+                log.test_result(tester, 'sensor', test_result, ip=bound_ip)
+            except Exception:
+                pass
+
             return jsonify({'success': True, 'sensor_info': sensor_results, 'result': test_result})
         except Exception as e:
             log.error(f"错误: {str(e)}")      
@@ -1239,14 +1337,12 @@ def start_test():
     
     # 扬声器检测的特殊处理
     elif test_type == 'speaker':
-        log.info("开始扬声器检测...")
         if not bound_ip:
             return jsonify({'success': False, 'error': '请先绑定IP地址'})
         
         try:
             from script.play_speaker import RemoteDesktopVolumeBell
             player = RemoteDesktopVolumeBell(ip=bound_ip)
-            log.info("RemoteDesktopVolumeBell创建成功")
             player.play()
             
             # 保存扬声器检测结果
@@ -1256,7 +1352,12 @@ def start_test():
                 'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             write_result_file(bound_ip, results)
-            
+
+            try:
+                log.test_result(tester, 'speaker', 'pending (播放完成)', ip=bound_ip)
+            except Exception:
+                pass
+
             return jsonify({'success': True})
         except Exception as e:
             log.error(f"错误: {str(e)}")      
@@ -1266,7 +1367,6 @@ def start_test():
     
     # 网络Ping测试的特殊处理
     elif test_type == 'ping':
-        log.info("开始网络Ping测试...")
         if not bound_ip:
             return jsonify({'success': False, 'error': '请先绑定IP地址'})
         
@@ -1295,14 +1395,11 @@ def start_test():
                 ssh_ip=bound_ip,
                 targets=ping_targets,
             )
-            log.info("PingManager创建成功")
             ping_results = manager.run_all()
-            log.info(f"Ping测试结果: {ping_results}")
             
             # 对于跳过的目标，直接设置固定延迟值
             for target in skip_targets:
                 ping_results[target] = "0.100 ms"
-                log.info(f"跳过测试 {target}，返回固定延迟: 0.100 ms")
             
             # Ping标准值（只要小于这些值就行，因为延迟越小越好）
             ping_standard = {}
@@ -1339,17 +1436,21 @@ def start_test():
                 'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             write_result_file(bound_ip, results)
-            
+
+            try:
+                log.test_result(tester, 'ping', test_result, ip=bound_ip)
+            except Exception:
+                pass
+
             return jsonify({'success': True, 'ping_info': ping_results, 'result': test_result})
         except Exception as e:
             log.error(f"错误: {str(e)}")      
             import traceback
             log.error(f"堆栈: {traceback.format_exc()}")
             return jsonify({'success': False, 'error': f"{str(e)}"})
-    
+
     # 升降电机测试的特殊处理
     elif test_type == 'lift_motor':
-        log.info("开始升降电机测试...")
         if not bound_ip:
             return jsonify({'success': False, 'error': '请先绑定IP地址'})
         
@@ -1358,7 +1459,6 @@ def start_test():
             # 执行升降电机测试
             controller = LiftingPlatformController(bound_ip)
             controller.run()
-            log.info("升降电机测试执行成功")
             
             # 保存升降电机测试结果
             results = read_result_file(bound_ip)
@@ -1367,7 +1467,12 @@ def start_test():
                 'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             write_result_file(bound_ip, results)
-            
+
+            try:
+                log.test_result(tester, 'lift_motor', 'pending (已执行)', ip=bound_ip)
+            except Exception:
+                pass
+
             return jsonify({'success': True})
         except Exception as e:
             log.error(f"错误: {str(e)}")      
@@ -1377,7 +1482,6 @@ def start_test():
     
     # 动态测试的特殊处理
     elif test_type == 'dynamic':
-        log.info("开始动态测试...")
         if not bound_ip:
             return jsonify({'success': False, 'error': '请先绑定IP地址'})
         
@@ -1434,7 +1538,6 @@ def start_test():
             def run_tasks_async(run_id_local, stop_event_local):
                 try:
                     task_results = inspector.run_tasks(stop_event=stop_event_local)
-                    log.info(f"动态测试执行成功: {task_results}")
 
                     with dynamic_worker_lock:
                         active_worker = dynamic_workers.get(bound_ip)
@@ -1462,6 +1565,11 @@ def start_test():
                         dynamic_info['error'] = task_results.get('error')
                     results['dynamic'] = dynamic_info
                     write_result_file(bound_ip, results)
+
+                    try:
+                        log.test_result(tester, 'dynamic', final_result, ip=bound_ip)
+                    except Exception:
+                        pass
                 except Exception as e:
                     inspector.save_task_status(None, current_step="动态测试异常", step_status="failed", error=str(e), result="failed")
                     log.error(f"错误: {str(e)}")      
@@ -1487,7 +1595,6 @@ def start_test():
     
     # 集成测试的特殊处理
     elif test_type == 'integrated':
-        log.info("开始集成测试...")
         if not bound_ip:
             return jsonify({'success': False, 'error': '请先绑定IP地址'})
         
@@ -1570,18 +1677,14 @@ def start_test():
                         try:
                             # 使用 execute_and_poll_status 执行任务并等待完成
                             response = controller.execute_and_poll_status(task_name)
-                            log.info(f"任务 {task_name} 执行结果: {response}")
                             
                             # 如果是需要下载文件的任务，下载文件
                             if task_name in task_filename_map and isinstance(response, str):
                                 local_file = download_mos_file(bound_ip, response, task_filename_map[task_name])
-                                if local_file:
-                                    log.info(f"文件下载成功: {local_file}")
                             
                             # 简单判断：如果有响应则认为成功
                             task_statuses[task_name] = 'success'
                         except Exception as e:
-                            log.error(f"任务 {task_name} 执行失败: {str(e)}")
                             task_statuses[task_name] = 'failed'
                             all_success = False
                         
@@ -1611,8 +1714,11 @@ def start_test():
                     integrated_info['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     results['integrated'] = integrated_info
                     write_result_file(bound_ip, results)
-                    
-                    log.info(f"集成测试执行完成，结果: {final_result}")
+
+                    try:
+                        log.test_result(tester, 'integrated', final_result, ip=bound_ip)
+                    except Exception:
+                        pass
                 except Exception as e:
                     results = read_result_file(bound_ip)
                     integrated_info = results.get('integrated', {})
@@ -1691,12 +1797,23 @@ def end_test():
                 if active_worker and active_worker.get('run_id') == worker.get('run_id'):
                     integrated_workers.pop(bound_ip, None)
     
+    tester = _get_tester()
     if bound_ip:
         # 读取现有结果
         results = read_result_file(bound_ip)
         
         # 获取当前时间
         test_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        # ---------- 统一记录测试结果到日志 ----------
+        try:
+            if result is not None:
+                log.test_result(tester, test_type, result, ip=bound_ip)
+            else:
+                # 某些测试项（如 manual）可能仅更新数据而不传递全局 result
+                log.test_result(tester, test_type, "已更新", ip=bound_ip)
+        except Exception:
+            pass
         
         # 对于版本测试，保留版本信息并添加测试结果和时间
         if test_type == 'version':

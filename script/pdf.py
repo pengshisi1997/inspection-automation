@@ -1,5 +1,13 @@
 import sys
 import subprocess
+import os
+
+# 将项目根目录注入到 sys.path，保证：
+#   1) 被 app.py 作为模块导入时（包结构完整）一切正常；
+#   2) 被直接当作脚本运行（如 `python script/pdf.py`）时也能找到 `config` 等顶层包。
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 try:
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
