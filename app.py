@@ -220,6 +220,10 @@ def write_result_file(ip, data):
         log.error(f"写入{filename}文件失败: {e}")
         return False
 
+def get_dynamic_tasks_for_model(model):
+    current_config = model_config.get(model or DEFAULT_MODEL, model_config.get(DEFAULT_MODEL, {}))
+    return list(current_config.get('dynamic', model_config.get(DEFAULT_MODEL, {}).get('dynamic', [])))
+
 # 存储测试状态
 test_status = {
     'version': 'pending',  # pending, success, failed
@@ -935,22 +939,12 @@ def get_dynamic_info():
     robot_info = results.get('robot_info', {})
     current_model = robot_info.get('model')
     
+    dynamic_items = get_dynamic_tasks_for_model(current_model)
+
     # 构建任务状态和描述
     task_status = dynamic_info.get('data', {})
     if not task_status:
-        # 根据机型返回不同的默认任务列表
-        if current_model == 'HSR':
-            task_status = {
-                '直线': '未测试', 
-                '切区': '未测试', 
-                '横移': '未测试', 
-                '沟壑': '未测试', 
-                '45°夹角': '未测试', 
-                '精定位': '未测试', 
-                '云台': '未测试'
-            }
-        else:
-            task_status = {'直线': '未测试', '曲线': '未测试', '沟壑': '未测试', '切区': '未测试', '云台': '未测试'}
+        task_status = {item: '未测试' for item in dynamic_items}
     
     # 从文件中读取并返回测试内容
     return jsonify({
@@ -1111,7 +1105,16 @@ def test_single_integrated_task():
         
         # 如果是需要下载文件的任务，下载文件
         if task_name in task_filename_map and isinstance(response, str):
-            local_file = download_mos_file(bound_ip, response, task_filename_map[task_name])
+            # TW机型照片路径转换：从 /images/xxx.jpg 转为 /server/data/image/xxx.jpg
+            robot_info = results.get('robot_info', {}) if 'results' in dir() else read_result_file(bound_ip).get('robot_info', {})
+            current_model = robot_info.get('model', '')
+            remote_path = response
+            if current_model == 'TW' and remote_path.startswith('/images/'):
+                filename = os.path.basename(remote_path)
+                remote_path = f'/server/data/image/{filename}'
+                log.info(f"TW机型路径转换: {response} -> {remote_path}")
+            
+            local_file = download_mos_file(bound_ip, remote_path, task_filename_map[task_name])
             if local_file:
                 log.info(f"文件下载成功: {local_file}")
         
@@ -1511,25 +1514,8 @@ def start_test():
             inspector = InspectionAutomation(bound_ip, current_model)
             dynamic_inspectors[bound_ip] = inspector
             
-            # 根据机型设置不同的初始状态
-            if current_model == 'HSR':
-                initial_status = {
-                    '直线': 'failed',
-                    '切区': 'failed',
-                    '横移': 'failed',
-                    '沟壑': 'failed',
-                    '45°夹角': 'failed',
-                    '精定位': 'failed',
-                    '云台': 'failed'
-                }
-            else:
-                initial_status = {
-                    '直线': 'failed',
-                    '曲线': 'failed',
-                    '沟壑': 'failed',
-                    '切区': 'failed',
-                    '云台': 'failed'
-                }
+            # 根据机型配置设置初始状态，保持保存、读取和页面展示一致
+            initial_status = {item: 'failed' for item in get_dynamic_tasks_for_model(current_model)}
             inspector.save_task_status(initial_status, current_step="准备执行动态任务", step_status="running", error="", result="running")
 
             run_id = str(uuid.uuid4())
@@ -1680,7 +1666,16 @@ def start_test():
                             
                             # 如果是需要下载文件的任务，下载文件
                             if task_name in task_filename_map and isinstance(response, str):
-                                local_file = download_mos_file(bound_ip, response, task_filename_map[task_name])
+                                # TW机型照片路径转换：从 /images/xxx.jpg 转为 /server/data/image/xxx.jpg
+                                robot_info = results.get('robot_info', {})
+                                current_model = robot_info.get('model', '')
+                                remote_path = response
+                                if current_model == 'TW' and remote_path.startswith('/images/'):
+                                    filename = os.path.basename(remote_path)
+                                    remote_path = f'/server/data/image/{filename}'
+                                    log.info(f"TW机型路径转换: {response} -> {remote_path}")
+                                
+                                local_file = download_mos_file(bound_ip, remote_path, task_filename_map[task_name])
                             
                             # 简单判断：如果有响应则认为成功
                             task_statuses[task_name] = 'success'
@@ -2043,7 +2038,20 @@ def generate_report():
 @app.route('/image/<image_name>')
 def serve_image(image_name):
     try:
-        return send_from_directory(IMAGE_DIR, image_name)
+        full_path = os.path.join(IMAGE_DIR, image_name)
+        if os.path.exists(full_path):
+            return send_from_directory(IMAGE_DIR, image_name)
+        
+        name_without_ext, _ = os.path.splitext(image_name)
+        for ext in ['.png', '.jpg', '.jpeg', '.JPG', '.JPEG', '.PNG', '.gif', '.bmp']:
+            alt_path = os.path.join(IMAGE_DIR, name_without_ext + ext)
+            if os.path.exists(alt_path):
+                alt_filename = name_without_ext + ext
+                log.info(f"图片扩展名匹配: {image_name} -> {alt_filename}")
+                return send_from_directory(IMAGE_DIR, alt_filename)
+        
+        log.error(f"提供图片失败: 图片 {image_name} 不存在")
+        return jsonify({'success': False, 'error': '图片不存在'}), 404
     except Exception as e:
         log.error(f"提供图片失败: {str(e)}")
         return jsonify({'success': False, 'error': '图片不存在'}), 404
@@ -2118,23 +2126,8 @@ def get_integrated_file():
         return jsonify({'success': False, 'error': '无效的文件类型'})
     
     try:
-        # 获取 SN 号
-        def get_sn():
-            try:
-                result_file = os.path.join(TEST_RECORD_DIR, f"{bound_ip}.json")
-                if not os.path.exists(result_file):
-                    return "UNKNOWN_SN"
-                with open(result_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                sn = data.get("robot_info", {}).get("sn") or "UNKNOWN_SN"
-                sn = str(sn).strip()
-                for ch in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']:
-                    sn = sn.replace(ch, "_")
-                return sn if sn else "UNKNOWN_SN"
-            except Exception:
-                return "UNKNOWN_SN"
-        
-        sn_name = get_sn()
+        from script.public import get_sn_from_ip
+        sn_name = get_sn_from_ip(bound_ip)
         filename_with_sn = f"{sn_name}_{filename}"
 
         # 1) 优先在本IP的 image_yuntai 子目录下查找
@@ -2192,23 +2185,8 @@ def get_temperature_data():
         return jsonify({'success': False, 'error': '未绑定IP'})
     
     try:
-        # 获取 SN 号
-        def get_sn():
-            try:
-                result_file = os.path.join(TEST_RECORD_DIR, f"{bound_ip}.json")
-                if not os.path.exists(result_file):
-                    return "UNKNOWN_SN"
-                with open(result_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                sn = data.get("robot_info", {}).get("sn") or "UNKNOWN_SN"
-                sn = str(sn).strip()
-                for ch in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']:
-                    sn = sn.replace(ch, "_")
-                return sn if sn else "UNKNOWN_SN"
-            except Exception:
-                return "UNKNOWN_SN"
-        
-        sn_name = get_sn()
+        from script.public import get_sn_from_ip
+        sn_name = get_sn_from_ip(bound_ip)
         filename_with_sn = f"{sn_name}_cewen.json"
 
         # 1) 优先在本IP的 image_yuntai 子目录下查找

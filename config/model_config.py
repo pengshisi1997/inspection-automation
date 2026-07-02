@@ -122,7 +122,7 @@ VERSION_STANDARDS = {
     'TW': {
         "pilot_version": "release_v4.0.8_xjyw.260528.1-x86_64-running",
         "rcc_base_version": "2.02",
-        "robot_version": "robot-v1.3.0_202605301834",
+        "robot_version": "robot-v1.3.0.1_2.100_202606121820",
         "rws_version": "v2.0.2",
         "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
         "youiscript_version": "release_v2.0.0.8-x86_64-running",
@@ -131,7 +131,7 @@ VERSION_STANDARDS = {
     'HSR': {
         "pilot_version": "v4.0.6_ex100.251028.1",
         "compass_version": "YOUICompassSetup-4.7.4-xjyw-V3.0-bl-20251229",
-        "mirror_system": "Pilot-4.0.3-desktop-2025-11-27.img",
+        "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
         "mos_version_hsr": "2.6.21_ARIS",
         "mirror_system_hsr": "Pilot-4.0.3-desktop-2025-11-27.img",
         "rcc_base_version": "2.01",

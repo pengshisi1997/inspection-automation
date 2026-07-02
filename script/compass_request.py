@@ -1,11 +1,11 @@
 import os
 import requests
 import json
-import os
 import pandas as pd
 import numpy as np
 import mysql.connector
 import time
+import paramiko
 
 
 def get_yuntai_task(ip):
@@ -134,8 +134,71 @@ def get_temperature(ip):
     return result
 
 
+def upload_map_folder(ip: str, local_folder_path: str, remote_base_path: str = "/home/youibot/youibot_map/"):
+    if not os.path.isdir(local_folder_path):
+        raise FileNotFoundError(f"文件夹不存在: {local_folder_path}")
+
+    username = "youibot"
+    password = "youibot"
+    port = 22
+
+    transport = None
+    sftp = None
+
+    try:
+        transport = paramiko.Transport((ip, port))
+        transport.connect(username=username, password=password)
+        sftp = paramiko.SFTPClient.from_transport(transport)
+
+        folder_name = os.path.basename(os.path.abspath(local_folder_path))
+        remote_folder_path = remote_base_path.rstrip('/') + '/' + folder_name
+
+        def mkdir_p(remote_path):
+            parts = remote_path.split('/')
+            current = ''
+            for part in parts:
+                if part:
+                    current += '/' + part
+                    try:
+                        sftp.stat(current)
+                    except FileNotFoundError:
+                        sftp.mkdir(current)
+
+        mkdir_p(remote_folder_path)
+
+        for root, dirs, files in os.walk(local_folder_path):
+            rel_path = os.path.relpath(root, local_folder_path)
+            if rel_path == '.':
+                remote_dir = remote_folder_path
+            else:
+                rel_path_unix = rel_path.replace('\\', '/')
+                remote_dir = remote_folder_path.rstrip('/') + '/' + rel_path_unix
+                mkdir_p(remote_dir)
+
+            for file in files:
+                local_file = os.path.join(root, file)
+                remote_file = remote_dir.rstrip('/') + '/' + file
+                sftp.put(local_file, remote_file)
+
+        return True, f"文件夹上传成功: {local_folder_path} -> {remote_folder_path}"
+
+    except Exception as e:
+        return False, f"文件夹上传失败: {str(e)}"
+    finally:
+        if sftp:
+            try:
+                sftp.close()
+            except:
+                pass
+        if transport:
+            try:
+                transport.close()
+            except:
+                pass
+
+
 # 上传地图
-def import_map_data(ip: str, local_path: str):
+def import_map_data(ip: str, local_path: str, model: str = None):
     if not os.path.isfile(local_path):
         raise FileNotFoundError(f"文件不存在: {local_path}")
 
@@ -159,6 +222,14 @@ def import_map_data(ip: str, local_path: str):
             "multiPartFile": (os.path.basename(local_path), f, "application/json")
         }
         resp = requests.post(url, headers=headers, files=files, timeout=60)
+
+    if model == "HSR":
+        print(1111111111111111111111111111111111111111111111)
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        hsr_map_folder = os.path.join(project_root, "map", "HSR", "7640a72f-53e5-11f1-9b5e-0242ac110002")
+        if os.path.isdir(hsr_map_folder):
+            success, msg = upload_map_folder(ip, hsr_map_folder)
+            print(f"HSR地图文件夹上传: {msg}")
 
     return resp.status_code, resp.text
 

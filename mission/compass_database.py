@@ -6,7 +6,7 @@ import mysql.connector
 def download_task():
     # 数据库连接信息
     connection = mysql.connector.connect(
-        host='192.168.16.53',
+        host='192.168.16.178',
         user='root',
         password='root',
         database='youicompass'

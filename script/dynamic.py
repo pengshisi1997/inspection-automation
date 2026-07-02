@@ -16,7 +16,11 @@ DEFAULT_MODEL = "MS"
 
 # 引入全局路径配置
 sys.path.insert(0, BASE_DIR)
-from config.model_config import IMAGE_YUNTAI_DIR, TEST_RECORD_DIR, get_image_yuntai_dir, get_result_file_path
+from config.model_config import (
+    TEST_RECORD_DIR,
+    get_image_yuntai_dir,
+    get_result_file_path,
+)
 
 
 class InspectionAutomation:
@@ -54,6 +58,22 @@ class InspectionAutomation:
             self.jixing = DEFAULT_MODEL
         self.initialize()
 
+    def _get_result_file_path(self):
+        return get_result_file_path(self.ip)
+
+    def _load_result_data(self):
+        result_file = self._get_result_file_path()
+        legacy_file = os.path.join(TEST_RECORD_DIR, f"{self.ip}.json")
+        for file_path in (result_file, legacy_file):
+            if not os.path.exists(file_path):
+                continue
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                continue
+        return {}
+
     def _resolve_model_file(self, base_dir, filename):
         model_path = os.path.join(BASE_DIR, base_dir, self.jixing, filename)
         if os.path.exists(model_path):
@@ -85,7 +105,7 @@ class InspectionAutomation:
 
         steps = [
             ("切换手动模式", lambda: compass_request.set_mode(self.ip, "manualMode")),
-            ("导入地图", lambda: compass_request.import_map_data(self.ip, map_file)),
+            ("导入地图", lambda: compass_request.import_map_data(self.ip, map_file, model=self.jixing)),
             ("上传任务", lambda: compass_request.upload_task(self.ip, mission_dir=mission_dir)),
             ("启用地图", lambda: compass_request.set_map(self.ip, "enable", map_id)),
             ("同步车辆地图", lambda: compass_request.sync_vehicle_map(self.ip, map_id)),
@@ -132,14 +152,7 @@ class InspectionAutomation:
         # 获取SN号
         def get_sn():
             try:
-                result_file = get_result_file_path(self.ip)
-                if not os.path.exists(result_file):
-                    # 兼容旧路径
-                    result_file = os.path.join(TEST_RECORD_DIR, f"{self.ip}.json")
-                if not os.path.exists(result_file):
-                    return "UNKNOWN_SN"
-                with open(result_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                data = self._load_result_data()
                 sn = data.get("robot_info", {}).get("sn") or "UNKNOWN_SN"
                 sn = str(sn).strip()
                 for ch in ['\\', '/', ':', '*', '?', '"', '<', '>', '|']:
@@ -149,7 +162,6 @@ class InspectionAutomation:
                 return "UNKNOWN_SN"
         
         sn = get_sn()
-        # 按IP区分保存到 test_record/<ip>/image_yuntai/ 目录下
         image_yuntai_dir = get_image_yuntai_dir(self.ip)
         os.makedirs(image_yuntai_dir, exist_ok=True)
         
@@ -259,19 +271,10 @@ class InspectionAutomation:
 
     def save_task_status(self, status, current_step=None, step_status=None, init_steps=None, error=None, result=None):
         """保存任务状态到文件"""
-        # 使用按IP区分的路径: test_record/<ip>/<ip>.json
-        status_file = get_result_file_path(self.ip)
-        status_dir = os.path.dirname(status_file)
-        if not os.path.exists(status_dir):
-            os.makedirs(status_dir, exist_ok=True)
-
-        existing_data = {}
-        if os.path.exists(status_file):
-            with open(status_file, 'r', encoding='utf-8') as f:
-                try:
-                    existing_data = json.load(f)
-                except json.JSONDecodeError:
-                    existing_data = {}
+        status_file = self._get_result_file_path()
+        os.makedirs(os.path.dirname(status_file), exist_ok=True)
+        
+        existing_data = self._load_result_data()
 
         existing_dynamic = existing_data.get('dynamic', {})
         if not isinstance(existing_dynamic, dict):

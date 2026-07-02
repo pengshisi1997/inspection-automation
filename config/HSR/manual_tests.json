@@ -18,7 +18,7 @@
       ],
       "expected_result": "1.测量结果要求：\r\n（1）长（L）：1020±5mm\r\n（2）宽（W）：655±5mm\r\n（3）高（H）：1169±5mm\r\n2.云台到地面的垂直距离：1468.7±5mm\r\n",
       "confirm_content": "整机尺寸与标注图一致",
-      "image": "e2b11d36-3238-43e0-834d-a217b2c324ab.png"
+      "image": "HSR尺寸.png"
     },
     {
       "name": "底盘左右盖板检测",
