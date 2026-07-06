@@ -139,7 +139,7 @@ VERSION_STANDARDS = {
 }
 
 DEFAULT_DYNAMIC_TASKS = ['直线', '切区', '曲线', '沟壑', '云台']
-HSR_DYNAMIC_TASKS = ['直线', '切区', '横移', '沟壑', '45°夹角', '精定位', '云台', '上集成']
+HSR_DYNAMIC_TASKS = ['直线', '切区', '横移', '沟壑', '45°夹角', '云台', '上集成']
 
 MODEL_CONFIG = {
     'MS': {

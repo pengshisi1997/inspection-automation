@@ -48,7 +48,6 @@ class InspectionAutomation:
                 "横移": "706cd915-f030-4178-a1d7-2e3747613db8",
                 "沟壑": "e653c5a9-8756-45b7-9aa5-57da4279adaa",
                 "45°夹角": "be3fe392-0275-4c52-90fb-8b6fb956bade",
-                "精定位": "3a33cfb7-8e71-4792-978f-7d6313ffb864",
                 "云台": "hsr_yuntai",
                 "上集成": "337c9cf0-818f-498b-9e89-382584253cf4"
             }

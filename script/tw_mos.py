@@ -6,7 +6,7 @@ import sys
 
 # 引入全局路径配置
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config.model_config import IMAGE_YUNTAI_DIR, TEST_RECORD_DIR
+from config.model_config import IMAGE_YUNTAI_DIR, TEST_RECORD_DIR, get_image_yuntai_dir, get_result_file_path
 
 
 class MosPTZController:
@@ -238,7 +238,7 @@ class MosPTZController:
             # 获取 SN 号
             sn_name = "UNKNOWN_SN"
             try:
-                result_file = os.path.join(TEST_RECORD_DIR, f"{self.host}.json")
+                result_file = get_result_file_path(self.host)
                 if os.path.exists(result_file):
                     with open(result_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
@@ -250,10 +250,8 @@ class MosPTZController:
             except Exception:
                 pass
             
-            # 创建 image_yuntai 目录
-            local_dir = IMAGE_YUNTAI_DIR
-            if not os.path.exists(local_dir):
-                os.makedirs(local_dir)
+            # 创建 image_yuntai 目录（按IP分组）
+            local_dir = get_image_yuntai_dir(self.host)
             
             # 构建文件路径
             temp_file = os.path.join(local_dir, f"{sn_name}_cewen.json")

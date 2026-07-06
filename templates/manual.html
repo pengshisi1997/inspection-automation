@@ -56,7 +56,6 @@
         </div>
         <div style="color:#606266; font-size: 13px; line-height: 1.6; margin-top: 14px; padding: 10px 12px; background:#ecf5ff; border-radius: 8px;">
             💡 手机连接robot的wifi，密码是robotlab。
-            <div style="margin-top: 6px; color:#909399; font-size: 12px;">链接：<span id="qrcodeUrl" style="color:#409eff; word-break: break-all;"></span></div>
         </div>
         <div style="margin-top: 16px; display:flex; gap: 10px;">
             <button class="btn btn-secondary" style="flex:1; padding: 8px 12px;" onclick="refreshQrcodeInModal()">🔄 刷新二维码</button>
@@ -476,12 +475,10 @@
         document.getElementById('qrcodeItemName').textContent = '测试项：' + itemName;
         const modal = document.getElementById('qrcodeModal');
         const img = document.getElementById('qrcodeImage');
-        const urlEl = document.getElementById('qrcodeUrl');
         const fallback = document.getElementById('qrcodeFallback');
         img.style.display = 'none';
         fallback.style.display = 'none';
         img.src = '';
-        urlEl.textContent = '生成中...';
         modal.style.display = 'block';
 
         fetch('/manual_upload/qrcode?item_name=' + encodeURIComponent(itemName))
@@ -495,14 +492,9 @@
                         fallback.style.display = 'block';
                         fallback.textContent = '（未安装 qrcode 库，二维码生成失败）';
                     }
-                    urlEl.textContent = d.upload_url || '';
-                } else {
-                    urlEl.textContent = '生成失败：' + (d.error || '未知错误');
                 }
             })
-            .catch(err => {
-                urlEl.textContent = '生成失败';
-            });
+            .catch(err => {});
 
         // 打开二维码弹窗时先刷新一次图片列表作为基线，再启动轮询
         loadItemImages(itemName).then(() => {

@@ -1,5 +1,6 @@
 import sys
 import subprocess
+import os
 
 try:
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
@@ -19,8 +20,20 @@ except ImportError:
     from reportlab.pdfbase.cidfonts import UnicodeCIDFont
     from reportlab.lib import colors
 
+import re
+
 from datetime import datetime
-from config.model_config import INTEGRATED_TASK_DESCRIPTIONS, MODEL_CONFIG, IMAGE_YUNTAI_DIR, TEST_RECORD_DIR
+from config.model_config import INTEGRATED_TASK_DESCRIPTIONS, MODEL_CONFIG, IMAGE_YUNTAI_DIR, TEST_RECORD_DIR, get_image_yuntai_dir, get_manual_upload_dir, _safe_ip
+
+
+def _safe_filename(name):
+    if not name:
+        return '_'
+    cleaned = re.sub(r'[\\/:*?"<>|\x00-\x1f]', '_', str(name))
+    cleaned = re.sub(r'\s+', '_', cleaned).strip('_')
+    if not cleaned:
+        cleaned = '_'
+    return cleaned[:120]
 
 # 动态测试子任务描述
 dynamic_task_descriptions = {
@@ -31,7 +44,6 @@ dynamic_task_descriptions = {
     '切区': '静止-1区，低速（≈0.4 m/s）-2区，中速（≈0.7 m/s）-3区，高速（≈1.2 m/s）-4区，旋转-5区',
     '横移': '横向移动测试，任务能正常执行完成',
     '45°夹角': '45度夹角测试，任务能正常执行完成',
-    '精定位': '精确定位测试，任务能正常执行完成',
     '上集成': '上集成功能测试，任务能正常执行完成'
 }
 
@@ -165,29 +177,11 @@ class RobotTestReport:
             elements += self._manual_info(section_idx)
             section_idx += 1
 
-        # 添加云台照片（仅当有有效SN且照片存在时添加
-        robot_sn = self.data.get('robot_info', {}).get('sn', '')
-        
-        if robot_sn and robot_sn.strip():
-            # 构建照片路径
-            import os
-            image_yuntai_path = IMAGE_YUNTAI_DIR
-            
-            # 仅尝试使用机器人SN的照片，不使用UNKNOWN_SN的照片
-            ptz1_path = os.path.join(image_yuntai_path, f'{robot_sn}_ptz1.jpg')
-            ptz2_path = os.path.join(image_yuntai_path, f'{robot_sn}_ptz2.jpg')
-            # 尝试使用预置点1照片作为备选
-            preset1_path = os.path.join(image_yuntai_path, f'{robot_sn}_预置点1.jpg')
-            # 新增：可见光拍照和热成像拍照
-            light_photo_path = os.path.join(image_yuntai_path, f'{robot_sn}_可见光拍照.jpg')
-            thermal_photo_path = os.path.join(image_yuntai_path, f'{robot_sn}_热成像拍照.jpg')
-            
-            # 辅助函数：安全地检查图片是否有效
+        # 辅助函数：安全地检查图片是否有效
             def is_image_valid(img_path):
                 if os.path.exists(img_path):
                     try:
                         from PIL import Image as PILImage
-                        # 尝试打开图片验证
                         with PILImage.open(img_path):
                             pass
                         return True
@@ -201,35 +195,111 @@ class RobotTestReport:
                 elements.append(img)
                 elements.append(Spacer(1, 10))
             
-            # 检查是否有任意一张照片可用
-            has_valid_light = is_image_valid(light_photo_path)
-            has_valid_thermal = is_image_valid(thermal_photo_path)
-            has_valid_ptz1 = is_image_valid(ptz1_path)
-            has_valid_ptz2 = is_image_valid(ptz2_path)
-            has_valid_preset = is_image_valid(preset1_path)
+            # 辅助函数：按优先级查找图片路径
+            def find_image_path(filename, ip_dir, fallback_dir):
+                # 1) 优先在IP目录下查找
+                ip_path = os.path.join(ip_dir, filename)
+                if os.path.exists(ip_path):
+                    return ip_path
+                # 2) 回退到全局目录
+                fallback_path = os.path.join(fallback_dir, filename)
+                if os.path.exists(fallback_path):
+                    return fallback_path
+                return None
             
-            has_any_valid = has_valid_light or has_valid_thermal or has_valid_ptz1 or has_valid_ptz2 or has_valid_preset
+            # 添加云台照片（仅当有有效SN且照片存在时添加）
+            robot_sn = self.data.get('robot_info', {}).get('sn', '')
+            robot_ip = self.data.get('robot_info', {}).get('ip', '')
             
-            if has_any_valid:
-                elements.append(Spacer(1, 20))
-                elements.append(Paragraph("云台照片", self.header_style))
-                elements.append(Spacer(1, 10))
+            if robot_sn and robot_sn.strip():
+                # 获取按IP分组的目录和回退目录
+                image_yuntai_ip_dir = get_image_yuntai_dir(robot_ip)
+                image_yuntai_fallback_dir = IMAGE_YUNTAI_DIR
+                
+                # 仅尝试使用机器人SN的照片，不使用UNKNOWN_SN的照片
+                ptz1_path = find_image_path(f'{robot_sn}_ptz1.jpg', image_yuntai_ip_dir, image_yuntai_fallback_dir)
+                ptz2_path = find_image_path(f'{robot_sn}_ptz2.jpg', image_yuntai_ip_dir, image_yuntai_fallback_dir)
+                preset1_path = find_image_path(f'{robot_sn}_预置点1.jpg', image_yuntai_ip_dir, image_yuntai_fallback_dir)
+                light_photo_path = find_image_path(f'{robot_sn}_可见光拍照.jpg', image_yuntai_ip_dir, image_yuntai_fallback_dir)
+                thermal_photo_path = find_image_path(f'{robot_sn}_热成像拍照.jpg', image_yuntai_ip_dir, image_yuntai_fallback_dir)
+                
+                # 检查是否有任意一张照片可用
+                has_valid_light = is_image_valid(light_photo_path) if light_photo_path else False
+                has_valid_thermal = is_image_valid(thermal_photo_path) if thermal_photo_path else False
+                has_valid_ptz1 = is_image_valid(ptz1_path) if ptz1_path else False
+                has_valid_ptz2 = is_image_valid(ptz2_path) if ptz2_path else False
+                has_valid_preset = is_image_valid(preset1_path) if preset1_path else False
+                
+                has_any_valid = has_valid_light or has_valid_thermal or has_valid_ptz1 or has_valid_ptz2 or has_valid_preset
+                
+                if has_any_valid:
+                    elements.append(Spacer(1, 20))
+                    elements.append(Paragraph("云台照片", self.header_style))
+                    elements.append(Spacer(1, 10))
+                
+                    # 优先添加可见光和热成像拍照
+                    if has_valid_light:
+                        add_image_safely(light_photo_path)
+                
+                    if has_valid_thermal:
+                        add_image_safely(thermal_photo_path)
+                
+                    # 添加ptz和预置点照片
+                    if has_valid_ptz1:
+                        add_image_safely(ptz1_path)
+                
+                    if has_valid_ptz2:
+                        add_image_safely(ptz2_path)
+                    elif not has_valid_ptz1 and not has_valid_ptz2 and has_valid_preset:
+                        add_image_safely(preset1_path)
             
-                # 优先添加可见光和热成像拍照
-                if has_valid_light:
-                    add_image_safely(light_photo_path)
-            
-                if has_valid_thermal:
-                    add_image_safely(thermal_photo_path)
-            
-                # 添加ptz和预置点照片
-                if has_valid_ptz1:
-                    add_image_safely(ptz1_path)
-            
-                if has_valid_ptz2:
-                    add_image_safely(ptz2_path)
-                elif not has_valid_ptz1 and not has_valid_ptz2 and has_valid_preset:
-                    add_image_safely(preset1_path)
+            # 添加手动上传照片
+            if robot_ip:
+                # 与app.py保持一致：先对IP做_safe_filename处理，再传给get_manual_upload_dir
+                safe_robot_ip = _safe_filename(robot_ip)
+                manual_upload_ip_dir = get_manual_upload_dir(safe_robot_ip)
+                manual_upload_fallback_dir = get_manual_upload_dir(None)
+                
+                # 获取所有手动测试项
+                manual_test_names = [item.get('name', '') for item in self.manual_tests]
+                all_manual_images = []
+                added_paths = set()
+                
+                # 收集测试项对应的目录名（含安全文件名）
+                test_dir_names = {}
+                for test_name in manual_test_names:
+                    if test_name:
+                        safe_test_name = _safe_filename(test_name)
+                        test_dir_names[safe_test_name] = test_name
+                
+                # 扫描IP目录下的所有子目录（包含未在manual_tests.json中定义的目录）
+                for scan_dir in [manual_upload_ip_dir, manual_upload_fallback_dir]:
+                    if os.path.isdir(scan_dir):
+                        for dir_name in os.listdir(scan_dir):
+                            dir_path = os.path.join(scan_dir, dir_name)
+                            if os.path.isdir(dir_path):
+                                # 获取显示名称（优先使用原始测试项名，否则使用目录名）
+                                display_name = test_dir_names.get(dir_name, dir_name)
+                                for filename in os.listdir(dir_path):
+                                    lower = filename.lower()
+                                    if lower.endswith(('.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif')):
+                                        img_path = os.path.join(dir_path, filename)
+                                        # 使用set去重
+                                        if img_path not in added_paths and is_image_valid(img_path):
+                                            added_paths.add(img_path)
+                                            all_manual_images.append((display_name, img_path))
+                
+                # 按测试项名称排序
+                all_manual_images.sort(key=lambda x: x[0])
+                
+                if all_manual_images:
+                    elements.append(Spacer(1, 20))
+                    elements.append(Paragraph("手动上传照片", self.header_style))
+                    elements.append(Spacer(1, 10))
+                    
+                    for test_name, img_path in all_manual_images:
+                        elements.append(Paragraph(f"【{test_name}】", self.text_style))
+                        add_image_safely(img_path)
 
         doc.build(elements)
 

@@ -5,7 +5,7 @@ import json
 import subprocess
 import time
 import pyautogui
-from config.model_config import IMAGE_YUNTAI_DIR, TEST_RECORD_DIR, get_result_file_path
+from config.model_config import IMAGE_YUNTAI_DIR, TEST_RECORD_DIR, get_result_file_path, get_image_yuntai_dir
 
 def download_latest_image(ip):
     username = "youibot"
@@ -19,7 +19,7 @@ def download_latest_image(ip):
     try:
         def get_sn_name():
             try:
-                result_file = os.path.join(TEST_RECORD_DIR, f"{ip}.json")
+                result_file = get_result_file_path(ip)
                 if not os.path.exists(result_file):
                     return "UNKNOWN_SN"
                 with open(result_file, "r", encoding="utf-8") as f:
@@ -80,10 +80,8 @@ def download_latest_image(ip):
         ptz_paths = extract_image_paths('ptz拍照')
         preset_paths = extract_image_paths('预置点拍照')
 
-        # 创建image_yuntai目录
-        local_dir = IMAGE_YUNTAI_DIR
-        if not os.path.exists(local_dir):
-            os.makedirs(local_dir)
+        # 创建image_yuntai目录（按IP分组）
+        local_dir = get_image_yuntai_dir(ip)
 
         result_paths = {}
 
@@ -258,10 +256,8 @@ def download_mos_file(ip, remote_path, local_filename):
     sftp = None
     
     try:
-        # 创建 image_yuntai 目录
-        local_dir = IMAGE_YUNTAI_DIR
-        if not os.path.exists(local_dir):
-            os.makedirs(local_dir)
+        # 创建 image_yuntai 目录（按IP分组）
+        local_dir = get_image_yuntai_dir(ip)
         
         ssh.connect(ip, username=username, password=password, timeout=10)
         sftp = ssh.open_sftp()
