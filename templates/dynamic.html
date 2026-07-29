@@ -18,7 +18,8 @@
     </div>
     <div class="current-area">
         <span class="area-label">当前区域:</span>
-        <span class="area-value" id="area-value">-</span>
+        <span class="area-value" id="area-value">点击查看</span>
+        <button class="btn btn-primary area-view-button" id="view-area-button" type="button" onclick="startAreaViewer()">查看当前区域</button>
     </div>
     <div class="current-step">
         <span class="area-label">当前步骤:</span>
@@ -164,6 +165,11 @@
         font-size: 16px;
         font-weight: bold;
     }
+    .area-view-button {
+        margin-left: 16px;
+        padding: 5px 12px;
+        font-size: 13px;
+    }
     .current-step {
         margin-top: 10px;
         padding: 10px 15px;
@@ -264,12 +270,13 @@
     // 控制是否暂停刷新任务状态
     let isRefreshPaused = false;
     let hasShownDynamicError = false;
+    let areaRefreshTimer = null;
     
-    const configuredDynamicTasks = {% if current_model and model_config[current_model].get('dynamic') %}
-        {{ model_config[current_model]['dynamic'] | tojson }}
-    {% else %}
-        []
-    {% endif %};
+    const configuredDynamicTaskDefinitions = {{ get_subtasks(current_model, 'dynamic') | tojson }};
+    const configuredDynamicTasks = configuredDynamicTaskDefinitions.map(task => task.id);
+    const dynamicTaskMeta = Object.fromEntries(
+        configuredDynamicTaskDefinitions.map(task => [task.id, task])
+    );
 
     function getCurrentModel() {
         const robotInfo = window.robotInfo || {};
@@ -287,11 +294,11 @@
         let html = '';
         
         tasks.forEach(taskName => {
-            const isYuntai = taskName === '云台';
-            const viewButton = isYuntai ? '<button class="btn btn-primary" style="padding: 2px 8px; font-size: 12px; margin-right: 10px;" onclick="viewPtzResult()">查看结果</button>' : '';
+            const meta = dynamicTaskMeta[taskName] || {label: taskName};
+            const viewButton = meta.view_result ? '<button class="btn btn-primary" style="padding: 2px 8px; font-size: 12px; margin-right: 10px;" onclick="viewPtzResult()">查看结果</button>' : '';
             html += `
                 <div class="task-item">
-                    <span class="task-label">${taskName}任务:</span>
+                    <span class="task-label">${meta.label}任务:</span>
                     <div class="task-status-container">
                         ${viewButton}
                         <span class="task-value" id="task-${taskName}">未测试</span>
@@ -434,6 +441,59 @@
 
     function closeImageModal() {
         document.getElementById('imageModal').style.display = "none";
+    }
+
+    function refreshLidarField() {
+        fetch('/get_lidar_field')
+        .then(response => response.json())
+        .then(data => {
+            const areaValueEl = document.getElementById('area-value');
+            if (!areaValueEl) {
+                return;
+            }
+            if (!data.success) {
+                areaValueEl.textContent = data.error || '查看失败';
+            } else if (data.data !== null && data.data !== undefined) {
+                areaValueEl.textContent = data.data;
+            } else {
+                areaValueEl.textContent = '读取中...';
+            }
+        })
+        .catch(error => {
+            console.log('刷新lidar field数据失败:', error);
+        });
+    }
+
+    function startAreaViewer() {
+        const button = document.getElementById('view-area-button');
+        const areaValueEl = document.getElementById('area-value');
+        button.disabled = true;
+        button.textContent = '启动中...';
+        areaValueEl.textContent = '连接中...';
+
+        fetch('/start_lidar_field', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.error || '启动失败');
+            }
+            button.textContent = '查看中';
+            if (data.data !== null && data.data !== undefined) {
+                areaValueEl.textContent = data.data;
+            } else {
+                areaValueEl.textContent = '读取中...';
+            }
+            refreshLidarField();
+            if (!areaRefreshTimer) {
+                areaRefreshTimer = setInterval(refreshLidarField, 300);
+            }
+        })
+        .catch(error => {
+            button.disabled = false;
+            button.textContent = '重新查看';
+            areaValueEl.textContent = '查看失败';
+            console.error('启动当前区域查看失败:', error);
+        });
     }
 
     // 点击模态框外部关闭
@@ -670,25 +730,5 @@
             }
         }, 1000); // 每1秒刷新一次
 
-        // 定时刷新lidar field数据
-        setInterval(function() {
-            fetch('/get_lidar_field')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const areaValueEl = document.getElementById('area-value');
-                    if (areaValueEl) {
-                        if (data.data !== null && data.data !== undefined) {
-                            areaValueEl.textContent = data.data;
-                        } else {
-                            areaValueEl.textContent = '-';
-                        }
-                    }
-                }
-            })
-            .catch(error => {
-                console.log('刷新lidar field数据失败:', error);
-            });
-        }, 150); // 每150ms刷新一次
     });
 </script>

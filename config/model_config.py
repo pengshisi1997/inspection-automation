@@ -96,7 +96,7 @@ VERSION_ITEMS = {
 
 VERSION_STANDARDS = {
     'MS': {
-        "pilot_version": "release/v3.8.0_xjyw_v1.5.21_20260313",
+        "pilot_version": "release/v3.8.0_xjyw_v1.5.21_260616.1",
         "compass_version": "YOUICompassSetup-4.7.4-xjyw-V4.2.0-20260427",
         "rcc_base_version": "2.01",
         "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
@@ -138,8 +138,133 @@ VERSION_STANDARDS = {
     },
 }
 
-DEFAULT_DYNAMIC_TASKS = ['直线', '切区', '曲线', '沟壑', '云台']
-HSR_DYNAMIC_TASKS = ['直线', '切区', '横移', '沟壑', '45°夹角', '云台', '上集成']
+# 动态测试的执行顺序和任务 ID 也归配置层管理；dynamic.py 不再维护副本。
+DYNAMIC_TASK_EXECUTION = {
+    'MS': {
+        '直线': '66fae2d4-462b-4b33-a392-b66e4f63cdbe',
+        '切区': '4aa45ede-d467-447b-850b-0f4ca1d9c122',
+        '曲线': 'f5fb1dd8-fb44-46d1-aa0f-6876b08cbf1a',
+        '沟壑': '769a31f3-50a7-4b5f-a431-34f5513a0bc5',
+        '云台': '7f883a3c-0c98-4e1a-b4ee-e21f805ec9d4',
+    },
+    'MR': {
+        '直线': '5631958b-40e7-45c8-8f7b-b447c3d8e9b4',
+        '切区': '6075b08e-0291-4cb5-a8c7-8d388fe1674e',
+        '曲线': '5631958b-40e7-45c8-8f7b-b447c3d8e9b4',
+        '沟壑': '5c2b6075-3f7c-4b6a-8781-e1cdd74c9dc5',
+        '云台': 'ec59ba95-e151-4e4a-8b5c-b81eb8527961',
+    },
+    'HSR': {
+        '直线': '374b38e0-5025-4f8a-8575-3525f99588c7',
+        '切区': '5844ef46-4613-45c9-8b9d-e5148f33375b',
+        '横移': '706cd915-f030-4178-a1d7-2e3747613db8',
+        '沟壑': 'e653c5a9-8756-45b7-9aa5-57da4279adaa',
+        '45°夹角': 'be3fe392-0275-4c52-90fb-8b6fb956bade',
+        '云台': 'hsr_yuntai',
+        '上集成': '337c9cf0-818f-498b-9e89-382584253cf4',
+    },
+}
+
+DEFAULT_DYNAMIC_TASKS = list(DYNAMIC_TASK_EXECUTION['MS'])
+HSR_DYNAMIC_TASKS = list(DYNAMIC_TASK_EXECUTION['HSR'])
+
+# 测试子任务的单一事实源。
+#
+# MODEL_CONFIG 只决定“某机型启用哪些子任务及其顺序”；所有面向用户的名称、
+# PDF 描述和前端能力都在这里维护。新增/改名子任务时无需再修改 HTML 或 pdf.py。
+SUBTASK_CATALOG = {
+    'version': {
+        'pilot_version': {'label': 'Pilot版本'},
+        'compass_version': {'label': 'Compass版本'},
+        'rcc_base_version': {'label': 'RCC_Base版本'},
+        'mirror_system': {'label': '工控机镜像版本'},
+        'robot_version': {'label': 'Robot版本'},
+        'rws_version': {'label': 'RWS版本'},
+        'youiscript_version': {'label': 'Youiscript版本'},
+        'mos_version': {'label': 'MOS版本'},
+        'mos_version_hsr': {'label': '上集成MOS版本'},
+        'mirror_system_hsr': {'label': '上集成工控机镜像'},
+    },
+    'sensor': {
+        'odom': {'label': '里程计'},
+        'imu_data': {'label': 'IMU数据'},
+        'ks114_sensor': {'label': '超声波传感器'},
+        'tfmini_sensor': {'label': '防跌落传感器'},
+        'encoder': {'label': '编码器'},
+        'scan_1': {'label': '激光雷达'},
+        'cpu_hz': {'label': 'CPU频率（需大于2400Hz）'},
+        'temperature': {'label': '温度'},
+        'humidity': {'label': '湿度'},
+        'pm10': {'label': 'PM10'},
+        'pm2_5': {'label': 'PM2.5'},
+        'o2': {'label': '气体板（O2/CO）'},
+        'co': {'label': 'CO'},
+        'microphone': {'label': '拾音器'},
+        'fan_board': {'label': '风扇板'},
+        'byz06_sensor': {'label': '噪声传感器'},
+        'fs00802_sensor': {'label': '气体板（PM值）'},
+    },
+    'ping': {
+        '192.168.0.8': {'label': '4G运维 (192.168.0.8)'},
+        '192.168.2.63': {'label': '云台 (192.168.2.63)'},
+        '192.168.2.250': {'label': '路由器 (192.168.2.250)'},
+        '192.168.0.100': {'label': '内网口 (192.168.0.100)'},
+        '192.168.2.2': {'label': '外网口 (192.168.2.2)'},
+        '192.168.0.100:8081': {'label': 'Compass接口 (192.168.0.100:8081)'},
+        '192.168.2.100': {'label': '算力板 (192.168.2.100)'},
+        '192.168.0.50': {'label': 'PLC (192.168.0.50)'},
+        '192.168.2.88': {'label': '机械臂 (192.168.2.88)'},
+        '192.168.2.90': {'label': 'MOS工控机 (192.168.2.90)'},
+        '192.168.2.89': {'label': '大恒相机 (192.168.2.89)'},
+    },
+    'button': {
+        'emergency_stop': {'label': '急停按钮'},
+        'left_emergency_stop': {'label': '左急停按钮'},
+        'right_emergency_stop': {'label': '右急停按钮'},
+        'voice': {'label': '语音按钮'},
+        'chassis_left_stop': {'label': '底盘左急停'},
+        'chassis_right_stop': {'label': '底盘右急停'},
+        'integrated_left_stop': {'label': '上集成左急停'},
+        'integrated_right_stop': {'label': '上集成右急停'},
+        'unlock_brake': {'label': '解抱闸按钮'},
+    },
+    'anti_collision': {
+        'front': {'label': '前防撞条', 'report_label': '前方'},
+        'back': {'label': '后防撞条', 'report_label': '后方'},
+        'left': {'label': '左防撞条', 'report_label': '左方'},
+        'right': {'label': '右防撞条', 'report_label': '右方'},
+    },
+    'light': {
+        'red': {'label': '红色灯光'},
+        'blue': {'label': '蓝色灯光'},
+        'green': {'label': '绿色灯光'},
+        'front_light': {'label': '前补光灯', 'switchable': True},
+        'back_light': {'label': '后补光灯', 'switchable': True},
+        'charge_relay': {'label': '充电继电器', 'switchable': True},
+    },
+    'dynamic': {
+        '直线': {'label': '直线', 'description': '0.4、0.8、1.2速度任务均能正常执行完成'},
+        '切区': {'label': '切区', 'description': '切换地图任务能正常执行完成'},
+        '曲线': {'label': '曲线', 'description': '0.4、0.8、1.2速度任务均能正常执行完成'},
+        '横移': {'label': '横移', 'description': '横移任务能正常执行完成'},
+        '沟壑': {'label': '沟壑', 'description': '30mm/50mm/70mm沟壑任务能正常执行完成'},
+        '45°夹角': {'label': '45°夹角', 'description': '45°夹角任务能正常执行完成'},
+        '云台': {'label': '云台', 'description': '云台拍照、预置点拍照及测温任务正常完成', 'view_result': True},
+        '上集成': {'label': '上集成', 'description': '上集成功能任务能正常执行完成'},
+    },
+    'integrated': {
+        'light_photo': {'label': '可见光拍照', 'description': '可见光拍照', 'view_result': True},
+        'light_video': {'label': '可见光录像', 'description': '可见光录像', 'view_result': True},
+        'thermal_photo': {'label': '热成像拍照', 'description': '热成像拍照', 'view_result': True},
+        'thermal_video': {'label': '热成像录像', 'description': '热成像录像', 'view_result': True},
+        'thermal_Temperature': {'label': '测温任务', 'description': '测温任务', 'view_result': True},
+        'light_PTZ': {'label': '云台动作', 'description': '云台动作'},
+        'light_point': {'label': '云台移动变倍至预置点10', 'description': '云台移动变倍至预置点10'},
+        'thermal_point': {'label': '云台移动变倍至预置点11', 'description': '云台移动变倍至预置点11'},
+        'Manual_focusing': {'label': '云台切换为手动聚焦', 'description': '云台切换为手动聚焦'},
+        'Auto_focusing': {'label': '云台切换为自动聚焦', 'description': '云台切换为自动聚焦'},
+    },
+}
 
 MODEL_CONFIG = {
     'MS': {
@@ -150,7 +275,7 @@ MODEL_CONFIG = {
         'version': list(VERSION_ITEMS['MS']),
         'sensor': ['odom', 'imu_data', 'ks114_sensor', 'encoder', 'scan_1', 'cpu_hz'],
         'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.0.100:8081'],
-        'dynamic': DEFAULT_DYNAMIC_TASKS,
+        'dynamic': list(DYNAMIC_TASK_EXECUTION['MS']),
     },
     'MR': {
         'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'lift_motor', 'dynamic', 'manual'],
@@ -160,7 +285,7 @@ MODEL_CONFIG = {
         'version': list(VERSION_ITEMS['MR']),
         'sensor': ['odom', 'imu_data', 'ks114_sensor', 'tfmini_sensor', 'encoder', 'scan_1', 'cpu_hz', 'byz06_sensor', 'fs00802_sensor'],
         'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.0.100:8081', '192.168.0.50'],
-        'dynamic': DEFAULT_DYNAMIC_TASKS,
+        'dynamic': list(DYNAMIC_TASK_EXECUTION['MR']),
     },
     'X310': {
         'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'dynamic', 'manual'],
@@ -222,17 +347,14 @@ TEST_NAMES = {
     'manual': '人工测试',
 }
 
+# 兼容旧调用方；内容由统一目录派生，不再单独维护。
 INTEGRATED_TASK_DESCRIPTIONS = {
-    'light_photo': '可见光拍照',
-    'light_video': '可见光录像',
-    'thermal_photo': '热成像拍照',
-    'thermal_video': '热成像录像',
-    'light_PTZ': '云台动作',
-    'light_point': '云台移动变倍至预置点10',
-    'thermal_point': '云台移动变倍至预置点11',
-    'Manual_focusing': '云台切换为手动聚焦',
-    'Auto_focusing': '云台切换为自动聚焦',
-    'thermal_Temperature': '测温任务',
+    task_id: meta.get('description', meta.get('label', task_id))
+    for task_id, meta in SUBTASK_CATALOG['integrated'].items()
+}
+DYNAMIC_TASK_DESCRIPTIONS = {
+    task_id: meta.get('description', '')
+    for task_id, meta in SUBTASK_CATALOG['dynamic'].items()
 }
 
 
@@ -242,3 +364,65 @@ def get_model_config(model, default_model=DEFAULT_MODEL):
 
 def get_version_fields(model):
     return list(get_model_config(model).get('version', VERSION_ITEMS['MS']))
+
+
+def get_subtask_definitions(model, test_type):
+    """按机型配置顺序返回前端/PDF可直接消费的子任务定义。"""
+    task_ids = get_model_config(model).get(test_type, [])
+    catalog = SUBTASK_CATALOG.get(test_type, {})
+    definitions = []
+    for task_id in task_ids:
+        meta = dict(catalog.get(task_id, {}))
+        meta.setdefault('label', str(task_id))
+        meta['id'] = task_id
+        definitions.append(meta)
+    return definitions
+
+
+def get_subtask_labels(model, test_type, report=False):
+    label_key = 'report_label' if report else 'label'
+    return {
+        item['id']: item.get(label_key, item.get('label', str(item['id'])))
+        for item in get_subtask_definitions(model, test_type)
+    }
+
+
+def get_subtask_descriptions(model, test_type):
+    return {
+        item['id']: item.get('description', item.get('label', str(item['id'])))
+        for item in get_subtask_definitions(model, test_type)
+    }
+
+
+def validate_test_config():
+    """启动时尽早暴露漏配，避免到了网页或 PDF 才发现名称为空。"""
+    errors = []
+    for model, config in MODEL_CONFIG.items():
+        unknown_tests = [item for item in config.get('test_items', []) if item not in TEST_NAMES]
+        if unknown_tests:
+            errors.append(f"{model}.test_items 未定义名称: {unknown_tests}")
+
+        for test_type, catalog in SUBTASK_CATALOG.items():
+            missing = [task_id for task_id in config.get(test_type, []) if task_id not in catalog]
+            if missing:
+                errors.append(f"{model}.{test_type} 未定义子任务元数据: {missing}")
+
+        if model in DYNAMIC_TASK_EXECUTION:
+            execution_order = list(DYNAMIC_TASK_EXECUTION[model])
+            if config.get('dynamic', []) != execution_order:
+                errors.append(f"{model}.dynamic 与动态执行配置顺序不一致")
+
+    missing_dynamic_meta = [
+        f"{model}.{task_id}"
+        for model, tasks in DYNAMIC_TASK_EXECUTION.items()
+        for task_id in tasks
+        if task_id not in SUBTASK_CATALOG['dynamic']
+    ]
+    if missing_dynamic_meta:
+        errors.append(f"动态执行任务未定义展示元数据: {missing_dynamic_meta}")
+
+    if errors:
+        raise ValueError("测试配置无效: " + "; ".join(errors))
+
+
+validate_test_config()

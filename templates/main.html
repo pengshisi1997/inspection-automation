@@ -262,20 +262,6 @@
             <div class="test-section">
                 <h2>测试项目</h2>
                 
-                {% set test_names = {
-                    'version': '版本检测',
-                    'sensor': '传感器检测',
-                    'ping': '网络Ping测试',
-                    'anti_collision': '防撞条检测',
-                    'speaker': '扬声器检测',
-                    'button': '按钮测试',
-                    'light': '灯光测试',
-                    'lift_motor': '升降电机测试',
-                    'dynamic': '动态测试',
-                    'integrated': '集成测试',
-                    'manual': '人工测试',
-                } %}
-                
                 {% for test_type in test_order %}
                 <div class="test-item {% if active_test == test_type %}active{% endif %}" onclick="navigateToTest('{{ test_type }}')">
                     <div class="test-item-header">

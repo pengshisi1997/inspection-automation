@@ -23,7 +23,15 @@ except ImportError:
 import re
 
 from datetime import datetime
-from config.model_config import INTEGRATED_TASK_DESCRIPTIONS, MODEL_CONFIG, IMAGE_YUNTAI_DIR, TEST_RECORD_DIR, get_image_yuntai_dir, get_manual_upload_dir, _safe_ip
+from config.model_config import (
+    MODEL_CONFIG,
+    SUBTASK_CATALOG,
+    IMAGE_YUNTAI_DIR,
+    TEST_RECORD_DIR,
+    get_image_yuntai_dir,
+    get_manual_upload_dir,
+    _safe_ip,
+)
 
 
 def _safe_filename(name):
@@ -34,22 +42,6 @@ def _safe_filename(name):
     if not cleaned:
         cleaned = '_'
     return cleaned[:120]
-
-# 动态测试子任务描述
-dynamic_task_descriptions = {
-    '直线': '0.4速度，0.8速度，1.2速度 ，任务能正常执行完成',
-    '曲线': '0.4速度，0.8速度，1.2速度，任务能正常执行完成',
-    '云台': 'ptz拍照，预置点拍照，普通测温，专家测温，照片生成在/server/data/image文件夹',
-    '沟壑': '任务能正常执行完成',
-    '切区': '静止-1区，低速（≈0.4 m/s）-2区，中速（≈0.7 m/s）-3区，高速（≈1.2 m/s）-4区，旋转-5区',
-    '横移': '横向移动测试，任务能正常执行完成',
-    '45°夹角': '45度夹角测试，任务能正常执行完成',
-    '上集成': '上集成功能测试，任务能正常执行完成'
-}
-
-# 集成测试子任务描述
-integrated_task_descriptions = INTEGRATED_TASK_DESCRIPTIONS
-
 
 class RobotTestReport:
 
@@ -467,28 +459,10 @@ class RobotTestReport:
 
         data = [["项目", "版本"]]
         
-        # 根据机型配置筛选版本信息子项
-        version_items = self.current_config.get('version', [])
-        if 'pilot_version' in version_items:
-            data.append(["Pilot版本", ver.get("pilot_version", "")])
-        if 'compass_version' in version_items:
-            data.append(["Compass版本", ver.get("compass_version", "")])
-        if 'mirror_system' in version_items:
-            data.append(["镜像系统", ver.get("mirror_system", "")])
-        if 'rcc_base_version' in version_items:
-            data.append(["RCC基础版本", ver.get("rcc_base_version", "")])
-        if 'robot_version' in version_items:
-            data.append(["Robot版本", ver.get("robot_version", "")])
-        if 'rws_version' in version_items:
-            data.append(["RWS版本", ver.get("rws_version", "")])
-        if 'youiscript_version' in version_items:
-            data.append(["YouiScript版本", ver.get("youiscript_version", "")])
-        if 'mos_version' in version_items:
-            data.append(["MOS版本", ver.get("mos_version", "")])
-        if 'mos_version_hsr' in version_items:
-            data.append(["上集成MOS版本", ver.get("mos_version_hsr", "")])
-        if 'mirror_system_hsr' in version_items:
-            data.append(["上集成工控机镜像", ver.get("mirror_system_hsr", "")])
+        version_catalog = SUBTASK_CATALOG.get('version', {})
+        for item_id in self.current_config.get('version', []):
+            label = version_catalog.get(item_id, {}).get('label', item_id)
+            data.append([label, ver.get(item_id, "")])
         
         data.append(["测试结果", self._status(ver.get("result"))])
         data.append(["测试时间", ver.get("time", "")])
@@ -513,42 +487,10 @@ class RobotTestReport:
 
         data = [["检测项", "原始数据"]]
         
-        # 根据机型配置筛选传感器子项
-        sensor_items = self.current_config.get('sensor', [])
-        if 'ks114_sensor' in sensor_items:
-            data.append(["超声波传感器", str(sensor_data.get("ks114_sensor", "无数据"))])
-        if 'odom' in sensor_items:
-            data.append(["里程计", str(sensor_data.get("odom", "无数据"))])
-        if 'imu_data' in sensor_items:
-            data.append(["IMU数据", str(sensor_data.get("imu_data", "无数据"))])
-        if 'encoder' in sensor_items:
-            data.append(["编码器", str(sensor_data.get("encoder", "无数据"))])
-        if 'tfmini_sensor' in sensor_items:
-            data.append(["防跌落传感器", str(sensor_data.get("tfmini_sensor", "无数据"))])
-        if 'scan_1' in sensor_items:
-            data.append(["激光雷达", str(sensor_data.get("scan_1", "无数据"))])
-        if 'cpu_hz' in sensor_items:
-            data.append(["CPU频率(需大于2400hz)", str(sensor_data.get("cpu_hz", "无数据"))])
-        if 'temperature' in sensor_items:
-            data.append(["温度", str(sensor_data.get("temperature", "无数据"))])
-        if 'humidity' in sensor_items:
-            data.append(["湿度", str(sensor_data.get("humidity", "无数据"))])
-        if 'pm10' in sensor_items:
-            data.append(["PM10", str(sensor_data.get("pm10", "无数据"))])
-        if 'pm2_5' in sensor_items:
-            data.append(["PM2.5", str(sensor_data.get("pm2_5", "无数据"))])
-        if 'o2' in sensor_items:
-            data.append(["O2", str(sensor_data.get("o2", "无数据"))])
-        if 'co' in sensor_items:
-            data.append(["CO", str(sensor_data.get("co", "无数据"))])
-        if 'microphone' in sensor_items:
-            data.append(["麦克风", str(sensor_data.get("microphone", "无数据"))])
-        if 'fan_board' in sensor_items:
-            data.append(["风扇板", str(sensor_data.get("fan_board", "无数据"))])
-        if 'byz06_sensor' in sensor_items:
-            data.append(["气体传感器(氧气)", str(sensor_data.get("byz06_sensor", "无数据"))])
-        if 'fs00802_sensor' in sensor_items:
-            data.append(["噪声传感器", str(sensor_data.get("fs00802_sensor", "无数据"))])
+        sensor_catalog = SUBTASK_CATALOG.get('sensor', {})
+        for item_id in self.current_config.get('sensor', []):
+            label = sensor_catalog.get(item_id, {}).get('label', item_id)
+            data.append([label, str(sensor_data.get(item_id, "无数据"))])
         
         data.append(["整体测试结果", self._status(sensor.get("result"))])
         data.append(["检测时间", sensor.get("time", "")])
@@ -566,18 +508,6 @@ class RobotTestReport:
         ping = self.data.get("ping", {})
         data_ping = ping.get("data", {})
 
-        # IP地址到设备名称的映射
-        ip_map = {
-            '192.168.0.8': '4g运维',
-            '192.168.2.63': '云台',
-            '192.168.2.250': '路由器',
-            '192.168.0.100': '内网口',
-            '192.168.2.2': '外网口',
-            '192.168.0.100:8081': 'Compass接口',
-            '192.168.2.100': '算力板',
-            '192.168.0.50': 'PLC'
-        }
-
         elements = []
         section_title = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"][idx-1]
         elements.append(Paragraph(f"{section_title}、网络连通性检测(标准<10ms)", self.header_style))
@@ -585,21 +515,15 @@ class RobotTestReport:
 
         table_data = [["设备", "延迟"]]
         ping_items = self.current_config.get('ping', [])
+        ping_catalog = SUBTASK_CATALOG.get('ping', {})
         if ping_items:
             for ip in ping_items:
                 delay = data_ping.get(ip)
-                # 如果有映射名称，显示 "名称 (IP)"，否则直接显示 IP
-                if ip in ip_map:
-                    device_name = f"{ip_map[ip]} ({ip})"
-                else:
-                    device_name = ip
+                device_name = ping_catalog.get(ip, {}).get('label', ip)
                 table_data.append([device_name, delay if delay else "未检测"])
         else:
             for ip, delay in data_ping.items():
-                if ip in ip_map:
-                    device_name = f"{ip_map[ip]} ({ip})"
-                else:
-                    device_name = ip
+                device_name = ping_catalog.get(ip, {}).get('label', ip)
                 table_data.append([device_name, delay])
 
         table_data.append(["测试结果", self._status(ping.get("result"))])
@@ -625,26 +549,11 @@ class RobotTestReport:
 
         table_data = [["检测项", "结果"]]
         
-        # 根据机型配置筛选按钮子项
-        button_items = self.current_config.get('button', [])
-        if 'emergency_stop' in button_items:
-            table_data.append(["急停按钮", self._status(data_button.get("emergency_stop"))])
-        if 'left_emergency_stop' in button_items:
-            table_data.append(["左急停按钮", self._status(data_button.get("left_emergency_stop"))])
-        if 'right_emergency_stop' in button_items:
-            table_data.append(["右急停按钮", self._status(data_button.get("right_emergency_stop"))])
-        if 'voice' in button_items:
-            table_data.append(["语音按钮", "未检测" if data_button.get("voice") is None else self._status(data_button.get("voice"))])
-        if 'unlock_brake' in button_items:
-            table_data.append(["解抱闸按钮", "未检测" if data_button.get("unlock_brake") is None else self._status(data_button.get("unlock_brake"))])
-        if 'chassis_left_stop' in button_items:
-            table_data.append(["底盘左急停按钮", "未检测" if data_button.get("chassis_left_stop") is None else self._status(data_button.get("chassis_left_stop"))])
-        if 'chassis_right_stop' in button_items:
-            table_data.append(["底盘右急停按钮", "未检测" if data_button.get("chassis_right_stop") is None else self._status(data_button.get("chassis_right_stop"))])
-        if 'integrated_left_stop' in button_items:
-            table_data.append(["上集成左急停按钮", "未检测" if data_button.get("integrated_left_stop") is None else self._status(data_button.get("integrated_left_stop"))])
-        if 'integrated_right_stop' in button_items:
-            table_data.append(["上集成右急停按钮", "未检测" if data_button.get("integrated_right_stop") is None else self._status(data_button.get("integrated_right_stop"))])
+        button_catalog = SUBTASK_CATALOG.get('button', {})
+        for item_id in self.current_config.get('button', []):
+            label = button_catalog.get(item_id, {}).get('label', item_id)
+            value = data_button.get(item_id)
+            table_data.append([label, "未检测" if value is None else self._status(value)])
         
         table_data.append(["总体结果", self._status(button.get("result"))])
         table_data.append(["测试时间", button.get("time", "")])
@@ -672,16 +581,13 @@ class RobotTestReport:
             ["方向", "检测结果", "拉力记录(N)"]
         ]
         anti_collision_items = self.current_config.get('anti_collision', [])
-        label_map = {
-            "front": "前方",
-            "back": "后方",
-            "left": "左方",
-            "right": "右方"
-        }
+        collision_catalog = SUBTASK_CATALOG.get('anti_collision', {})
         for strip in anti_collision_items:
             strip_status = "未检测" if data.get(strip) is None else self._status(data.get(strip))
             strip_newton = str(newton.get(strip, ""))
-            table_data.append([label_map.get(strip, str(strip)), strip_status, strip_newton])
+            meta = collision_catalog.get(strip, {})
+            label = meta.get('report_label', meta.get('label', str(strip)))
+            table_data.append([label, strip_status, strip_newton])
         
         table_data.append(["总体结果", self._status(anti.get("result")), ""])
         table_data.append(["测试时间", anti.get("time", ""), ""])
@@ -729,20 +635,10 @@ class RobotTestReport:
 
         table_data = [["灯光类型", "检测结果"]]
         
-        # 根据机型配置筛选灯光子项
-        light_items = self.current_config.get('light', [])
-        if 'red' in light_items:
-            table_data.append(["红色指示灯", self._status(data.get("red"))])
-        if 'blue' in light_items:
-            table_data.append(["蓝色指示灯", self._status(data.get("blue"))])
-        if 'green' in light_items:
-            table_data.append(["绿色指示灯", self._status(data.get("green"))])
-        if 'front_light' in light_items:
-            table_data.append(["前灯", self._status(data.get("front_light"))])
-        if 'back_light' in light_items:
-            table_data.append(["后灯", self._status(data.get("back_light"))])
-        if 'charge_relay' in light_items:
-            table_data.append(["充电继电器", self._status(data.get("charge_relay"))])
+        light_catalog = SUBTASK_CATALOG.get('light', {})
+        for item_id in self.current_config.get('light', []):
+            label = light_catalog.get(item_id, {}).get('label', item_id)
+            table_data.append([label, self._status(data.get(item_id))])
         
         table_data.append(["总体结果", self._status(light.get("result"))])
         table_data.append(["测试时间", light.get("time", "")])
@@ -769,11 +665,14 @@ class RobotTestReport:
         table_data = [["测试项目", "测试描述", "结果"]]
         # 根据机型获取动态测试任务列表
         dynamic_items = self.current_config.get('dynamic', ['直线', '切区', '曲线', '沟壑', '云台'])
+        dynamic_catalog = SUBTASK_CATALOG.get('dynamic', {})
         for task_name in dynamic_items:
-            description = dynamic_task_descriptions.get(task_name, "")
+            meta = dynamic_catalog.get(task_name, {})
+            label = meta.get('label', task_name)
+            description = meta.get('description', "")
             task_value = data.get(task_name)
             # 使用Paragraph对象包装文本，确保自动换行
-            test_name_paragraph = Paragraph(task_name, self.text_style)
+            test_name_paragraph = Paragraph(label, self.text_style)
             description_paragraph = Paragraph(description, self.text_style)
             result_paragraph = Paragraph(self._status(task_value), self.text_style)
             table_data.append([test_name_paragraph, description_paragraph, result_paragraph])
@@ -833,11 +732,14 @@ class RobotTestReport:
 
         table_data = [["测试项目", "测试描述", "结果"]]
         integrated_items = self.current_config.get('integrated', [])
+        integrated_catalog = SUBTASK_CATALOG.get('integrated', {})
         for task_name in integrated_items:
-            description = integrated_task_descriptions.get(task_name, "")
+            meta = integrated_catalog.get(task_name, {})
+            label = meta.get('label', task_name)
+            description = meta.get('description', "")
             task_value = data.get(task_name)
             # 使用Paragraph对象包装文本，确保自动换行
-            test_name_paragraph = Paragraph(description, self.text_style)
+            test_name_paragraph = Paragraph(label, self.text_style)
             description_paragraph = Paragraph(description, self.text_style)
             result_paragraph = Paragraph(self._status(task_value), self.text_style)
             table_data.append([test_name_paragraph, description_paragraph, result_paragraph])

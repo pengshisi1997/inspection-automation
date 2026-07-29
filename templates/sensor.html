@@ -5,65 +5,13 @@
     <!-- 传感器列表 -->
     <div class="sensor-list">
         <h3>传感器状态</h3>
-        {% if current_model and model_config[current_model].get('sensor') %}
-            {% for sensor in model_config[current_model]['sensor'] %}
+        {% for sensor_task in get_subtasks(current_model, 'sensor') %}
+            {% set sensor = sensor_task.id %}
                 <div class="sensor-item">
-                    <span class="sensor-name">
-                        {% if sensor == 'odom' %}里程计{% elif sensor == 'imu_data' %}IMU{% elif sensor == 'ks114_sensor' %}超声波{% elif sensor == 'tfmini_sensor' %}防跌落{% elif sensor == 'scan_1' %}雷达{% elif sensor == 'encoder' %}编码器{% elif sensor == 'cpu_hz' %}CPU频率{% elif sensor == 'temperature' %}温度{% elif sensor == 'humidity' %}湿度{% elif sensor == 'o2' %}气体版(pm值){% elif sensor == 'co' %}气体版(pm值){% elif sensor == 'microphone' %}拾音器{% elif sensor == 'fan_board' %}风扇板{% elif sensor == 'byz06_sensor' %}噪声传感器{% elif sensor == 'fs00802_sensor' %}气体版(pm值){% else %}{{ sensor }}{% endif %}:
-                    </span>
+                    <span class="sensor-name">{{ sensor_task.label }}:</span>
                     <span class="sensor-status" id="{{ sensor | replace('_', '-') }}">未检测</span>
                 </div>
-            {% endfor %}
-        {% else %}
-            <div class="sensor-item">
-                <span class="sensor-name">雷达:</span>
-                <span class="sensor-status" id="scan-1">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">IMU:</span>
-                <span class="sensor-status" id="imu-data">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">超声波:</span>
-                <span class="sensor-status" id="ks114-sensor">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">防跌落:</span>
-                <span class="sensor-status" id="tfmini-sensor">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">编码器:</span>
-                <span class="sensor-status" id="encoder">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">CPU频率:</span>
-                <span class="sensor-status" id="cpu-hz">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">温度:</span>
-                <span class="sensor-status" id="temperature">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">湿度:</span>
-                <span class="sensor-status" id="humidity">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">气体版(pm值):</span>
-                <span class="sensor-status" id="o2">未检测</span>
-            </div>
-            <div class="sensor-item" style="display: none;">
-                <span class="sensor-name">CO:</span>
-                <span class="sensor-status" id="co">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">拾音器:</span>
-                <span class="sensor-status" id="microphone">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">风扇板:</span>
-                <span class="sensor-status" id="fan-board">未检测</span>
-            </div>
-        {% endif %}
+        {% endfor %}
     </div>
     
     <div class="ui-buttons">

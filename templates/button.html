@@ -8,69 +8,16 @@
     
     <div class="button-info">
         <h3>测试结果</h3>
-        {% if 'emergency_stop' in current_button_types %}
-        <div class="button-item">
-            <span class="button-label">急停按钮:</span>
-            <span class="button-value" id="emergency-stop-status">未检测</span>
-            <button class="btn btn-sm btn-primary" onclick="testEmergencyStop()">测试</button>
-        </div>
-        {% endif %}
-        {% if 'left_emergency_stop' in current_button_types %}
-        <div class="button-item">
-            <span class="button-label">左急停按钮:</span>
-            <span class="button-value" id="left-emergency-stop-status">未检测</span>
-            <button class="btn btn-sm btn-primary" onclick="testLeftEmergencyStop()">测试</button>
-        </div>
-        {% endif %}
-        {% if 'right_emergency_stop' in current_button_types %}
-        <div class="button-item">
-            <span class="button-label">右急停按钮:</span>
-            <span class="button-value" id="right-emergency-stop-status">未检测</span>
-            <button class="btn btn-sm btn-primary" onclick="testRightEmergencyStop()">测试</button>
-        </div>
-        {% endif %}
-        {% if 'chassis_left_stop' in current_button_types %}
-        <div class="button-item">
-            <span class="button-label">底盘左急停:</span>
-            <span class="button-value" id="chassis-left-stop-status">未检测</span>
-            <button class="btn btn-sm btn-primary" onclick="testChassisLeftStop()">测试</button>
-        </div>
-        {% endif %}
-        {% if 'chassis_right_stop' in current_button_types %}
-        <div class="button-item">
-            <span class="button-label">底盘右急停:</span>
-            <span class="button-value" id="chassis-right-stop-status">未检测</span>
-            <button class="btn btn-sm btn-primary" onclick="testChassisRightStop()">测试</button>
-        </div>
-        {% endif %}
-        {% if 'integrated_left_stop' in current_button_types %}
-        <div class="button-item">
-            <span class="button-label">上集成左急停:</span>
-            <span class="button-value" id="integrated-left-stop-status">未检测</span>
-            <button class="btn btn-sm btn-primary" onclick="testIntegratedLeftStop()">测试</button>
-        </div>
-        {% endif %}
-        {% if 'integrated_right_stop' in current_button_types %}
-        <div class="button-item">
-            <span class="button-label">上集成右急停:</span>
-            <span class="button-value" id="integrated-right-stop-status">未检测</span>
-            <button class="btn btn-sm btn-primary" onclick="testIntegratedRightStop()">测试</button>
-        </div>
-        {% endif %}
-        {% if 'unlock_brake' in current_button_types %}
-        <div class="button-item">
-            <span class="button-label">解抱闸按钮:</span>
-            <span class="button-value" id="unlock-brake-status">未检测</span>
-            <button class="btn btn-sm btn-primary" onclick="testUnlockBrake()">测试</button>
-        </div>
-        {% endif %}
-        {% if 'voice' in current_button_types %}
-        <div class="button-item">
-            <span class="button-label">语音按钮:</span>
-            <span class="button-value" id="voice-button-status">未检测</span>
-            <button class="btn btn-sm btn-primary" onclick="testVoiceButton()">测试</button>
-        </div>
-        {% endif %}
+        {% for button_type in current_button_types %}
+            {% set button_meta = subtask_catalog.get('button', {}).get(button_type, {}) %}
+            {% set button_label = button_meta.get('label', button_type) %}
+            {% set status_id = button_type | replace('_', '-') ~ '-status' %}
+            <div class="button-item">
+                <span class="button-label">{{ button_label }}:</span>
+                <span class="button-value" id="{{ status_id }}">未检测</span>
+                <button class="btn btn-sm btn-primary" onclick='testButton({{ button_type | tojson }}, {{ status_id | tojson }}, {{ button_label | tojson }})'>测试</button>
+            </div>
+        {% endfor %}
     </div>
     
     <div class="ui-buttons">
@@ -222,111 +169,21 @@
         checkButtonStatus();
     }
     
-    function testEmergencyStop() {
-        testButton('emergency_stop', 'emergency-stop-status', '急停按钮');
-    }
-    
-    function testLeftEmergencyStop() {
-        testButton('left_emergency_stop', 'left-emergency-stop-status', '左急停按钮');
-    }
-    
-    function testRightEmergencyStop() {
-        testButton('right_emergency_stop', 'right-emergency-stop-status', '右急停按钮');
-    }
-    
-    function testVoiceButton() {
-        testButton('voice', 'voice-button-status', '语音按钮');
-    }
-    
-    function testChassisLeftStop() {
-        testButton('chassis_left_stop', 'chassis-left-stop-status', '底盘左急停');
-    }
-    
-    function testChassisRightStop() {
-        testButton('chassis_right_stop', 'chassis-right-stop-status', '底盘右急停');
-    }
-    
-    function testIntegratedLeftStop() {
-        testButton('integrated_left_stop', 'integrated-left-stop-status', '上集成左急停');
-    }
-    
-    function testIntegratedRightStop() {
-        testButton('integrated_right_stop', 'integrated-right-stop-status', '上集成右急停');
-    }
-    
-    function testUnlockBrake() {
-        testButton('unlock_brake', 'unlock-brake-status', '解抱闸按钮');
-    }
-    
     document.addEventListener('DOMContentLoaded', function() {
         fetch('/get_button_info')
         .then(response => response.json())
         .then(data => {
             if (data.success && data.button_info) {
-                const emergencyStopEl = document.getElementById('emergency-stop-status');
-                const leftEmergencyStopEl = document.getElementById('left-emergency-stop-status');
-                const rightEmergencyStopEl = document.getElementById('right-emergency-stop-status');
-                const voiceButtonEl = document.getElementById('voice-button-status');
-                const chassisLeftStopEl = document.getElementById('chassis-left-stop-status');
-                const chassisRightStopEl = document.getElementById('chassis-right-stop-status');
-                const integratedLeftStopEl = document.getElementById('integrated-left-stop-status');
-                const integratedRightStopEl = document.getElementById('integrated-right-stop-status');
-                const unlockBrakeEl = document.getElementById('unlock-brake-status');
                 const testTimeElement = document.getElementById('test-time');
-                
-                if (emergencyStopEl && data.button_info.emergency_stop) {
-                    const status = data.button_info.emergency_stop;
-                    emergencyStopEl.textContent = status === 'success' ? '成功' : '失败';
-                    emergencyStopEl.style.color = status === 'success' ? 'green' : 'red';
-                }
-                
-                if (leftEmergencyStopEl && data.button_info.left_emergency_stop) {
-                    const status = data.button_info.left_emergency_stop;
-                    leftEmergencyStopEl.textContent = status === 'success' ? '成功' : '失败';
-                    leftEmergencyStopEl.style.color = status === 'success' ? 'green' : 'red';
-                }
-                
-                if (rightEmergencyStopEl && data.button_info.right_emergency_stop) {
-                    const status = data.button_info.right_emergency_stop;
-                    rightEmergencyStopEl.textContent = status === 'success' ? '成功' : '失败';
-                    rightEmergencyStopEl.style.color = status === 'success' ? 'green' : 'red';
-                }
-                
-                if (voiceButtonEl && data.button_info.voice) {
-                    const status = data.button_info.voice;
-                    voiceButtonEl.textContent = status === 'success' ? '成功' : '失败';
-                    voiceButtonEl.style.color = status === 'success' ? 'green' : 'red';
-                }
-                
-                if (chassisLeftStopEl && data.button_info.chassis_left_stop) {
-                    const status = data.button_info.chassis_left_stop;
-                    chassisLeftStopEl.textContent = status === 'success' ? '成功' : '失败';
-                    chassisLeftStopEl.style.color = status === 'success' ? 'green' : 'red';
-                }
-                
-                if (chassisRightStopEl && data.button_info.chassis_right_stop) {
-                    const status = data.button_info.chassis_right_stop;
-                    chassisRightStopEl.textContent = status === 'success' ? '成功' : '失败';
-                    chassisRightStopEl.style.color = status === 'success' ? 'green' : 'red';
-                }
-                
-                if (integratedLeftStopEl && data.button_info.integrated_left_stop) {
-                    const status = data.button_info.integrated_left_stop;
-                    integratedLeftStopEl.textContent = status === 'success' ? '成功' : '失败';
-                    integratedLeftStopEl.style.color = status === 'success' ? 'green' : 'red';
-                }
-                
-                if (integratedRightStopEl && data.button_info.integrated_right_stop) {
-                    const status = data.button_info.integrated_right_stop;
-                    integratedRightStopEl.textContent = status === 'success' ? '成功' : '失败';
-                    integratedRightStopEl.style.color = status === 'success' ? 'green' : 'red';
-                }
-                
-                if (unlockBrakeEl && data.button_info.unlock_brake) {
-                    const status = data.button_info.unlock_brake;
-                    unlockBrakeEl.textContent = status === 'success' ? '成功' : '失败';
-                    unlockBrakeEl.style.color = status === 'success' ? 'green' : 'red';
-                }
+                const configuredButtons = {{ current_button_types | tojson }};
+                configuredButtons.forEach(buttonType => {
+                    const status = data.button_info[buttonType];
+                    const element = document.getElementById(buttonType.replaceAll('_', '-') + '-status');
+                    if (element && status) {
+                        element.textContent = status === 'success' ? '成功' : '失败';
+                        element.style.color = status === 'success' ? 'green' : 'red';
+                    }
+                });
                 
                 if (testTimeElement && data.button_info.time) {
                     testTimeElement.textContent = '测试时间: ' + data.button_info.time;

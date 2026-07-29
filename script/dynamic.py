@@ -17,6 +17,7 @@ DEFAULT_MODEL = "MS"
 # 引入全局路径配置
 sys.path.insert(0, BASE_DIR)
 from config.model_config import (
+    DYNAMIC_TASK_EXECUTION,
     TEST_RECORD_DIR,
     get_image_yuntai_dir,
     get_result_file_path,
@@ -24,38 +25,15 @@ from config.model_config import (
 
 
 class InspectionAutomation:
-    def __init__(self, ip, jixing):
+    def __init__(self, ip, jixing, auto_initialize=True):
         self.ip = ip
         self.jixing = (jixing or DEFAULT_MODEL).strip()
-        self.tasks = {
-            "MS": {
-                "直线": "66fae2d4-462b-4b33-a392-b66e4f63cdbe",
-                "切区": "4aa45ede-d467-447b-850b-0f4ca1d9c122",
-                "曲线": "f5fb1dd8-fb44-46d1-aa0f-6876b08cbf1a",
-                "沟壑": "769a31f3-50a7-4b5f-a431-34f5513a0bc5",
-                "云台": "7f883a3c-0c98-4e1a-b4ee-e21f805ec9d4"
-            },
-            "MR": {
-                "直线": "5631958b-40e7-45c8-8f7b-b447c3d8e9b4",
-                "切区": "6075b08e-0291-4cb5-a8c7-8d388fe1674e",
-                "曲线": "5631958b-40e7-45c8-8f7b-b447c3d8e9b4",
-                "沟壑": "5c2b6075-3f7c-4b6a-8781-e1cdd74c9dc5",
-                "云台": "ec59ba95-e151-4e4a-8b5c-b81eb8527961"
-            },
-            "HSR": {
-                "直线": "374b38e0-5025-4f8a-8575-3525f99588c7",
-                "切区": "5844ef46-4613-45c9-8b9d-e5148f33375b",
-                "横移": "706cd915-f030-4178-a1d7-2e3747613db8",
-                "沟壑": "e653c5a9-8756-45b7-9aa5-57da4279adaa",
-                "45°夹角": "be3fe392-0275-4c52-90fb-8b6fb956bade",
-                "云台": "hsr_yuntai",
-                "上集成": "337c9cf0-818f-498b-9e89-382584253cf4"
-            }
-        }
+        self.tasks = DYNAMIC_TASK_EXECUTION
         # 非定义机型回退使用MS动态任务配置
         if self.jixing not in self.tasks:
             self.jixing = DEFAULT_MODEL
-        self.initialize()
+        if auto_initialize:
+            self.initialize()
 
     def _get_result_file_path(self):
         return get_result_file_path(self.ip)
@@ -85,7 +63,7 @@ class InspectionAutomation:
             return model_dir
         return os.path.join(BASE_DIR, "mission")
 
-    def initialize(self):
+    def initialize(self, stop_event=None):
         """初始化操作，执行用户指定的代码"""
         map_file = self._resolve_model_file("map", "自动化测试.json")
         mission_dir = self._resolve_mission_dir()
@@ -102,10 +80,26 @@ class InspectionAutomation:
         }
         init_x, init_y, init_angle = relocation_params.get(self.jixing, relocation_params["MS"])
 
+        def report_task_upload_progress(message):
+            self.save_task_status(
+                None,
+                current_step=message,
+                step_status="running",
+                init_steps=init_steps,
+                error="",
+            )
+
         steps = [
             ("切换手动模式", lambda: compass_request.set_mode(self.ip, "manualMode")),
             ("导入地图", lambda: compass_request.import_map_data(self.ip, map_file, model=self.jixing)),
-            ("上传任务", lambda: compass_request.upload_task(self.ip, mission_dir=mission_dir)),
+            (
+                "上传任务",
+                lambda: compass_request.upload_task(
+                    self.ip,
+                    mission_dir=mission_dir,
+                    progress_callback=report_task_upload_progress,
+                ),
+            ),
             ("启用地图", lambda: compass_request.set_map(self.ip, "enable", map_id)),
             ("同步车辆地图", lambda: compass_request.sync_vehicle_map(self.ip, map_id)),
             ("手动重定位", lambda: compass_request.manual_relocation(ip=self.ip, init_x=init_x, init_y=init_y, init_angle=init_angle)),
@@ -113,16 +107,39 @@ class InspectionAutomation:
         ]
         init_steps = []
         for step_name, action in steps:
+            if stop_event and stop_event.is_set():
+                raise RuntimeError("动态测试已停止")
             self.save_task_status(None, current_step=step_name, step_status="running", init_steps=init_steps, error="")
-            try:
-                action()
+            max_attempts = 2 if step_name == "手动重定位" else 1
+            step_error = None
+            for attempt in range(1, max_attempts + 1):
+                if attempt > 1:
+                    if stop_event and stop_event.is_set():
+                        step_error = RuntimeError("动态测试已停止")
+                        break
+                    self.save_task_status(
+                        None,
+                        current_step="手动重定位失败，正在重试（2/2）",
+                        step_status="running",
+                        init_steps=init_steps,
+                        error="",
+                    )
+                try:
+                    action()
+                    step_error = None
+                    break
+                except Exception as e:
+                    step_error = e
+
+            if step_error is None:
                 init_steps.append({"name": step_name, "status": "success"})
                 self.save_task_status(None, current_step=step_name, step_status="success", init_steps=init_steps, error="")
-            except Exception as e:
+            else:
                 init_steps.append({"name": step_name, "status": "failed"})
-                error_msg = f"{step_name}失败: {e}"
+                retry_text = "重试后仍失败" if max_attempts > 1 else "失败"
+                error_msg = f"{step_name}{retry_text}: {step_error}"
                 self.save_task_status(None, current_step=step_name, step_status="failed", init_steps=init_steps, error=error_msg, result="failed")
-                raise RuntimeError(error_msg) from e
+                raise RuntimeError(error_msg) from step_error
         self.save_task_status(None, current_step="初始化完成", step_status="success", init_steps=init_steps, error="")
 
     def _build_status_by_index(self, task_names, current_idx, current_running=True):
@@ -211,7 +228,38 @@ class InspectionAutomation:
 
             print(f"开始执行任务: {task_name}")
             task_id = self.tasks[self.jixing][task_name]
-            
+
+            # 所有机型的云台任务执行前，都确保机器人图片目录已经存在。
+            if task_name == "云台":
+                self.save_task_status(
+                    results,
+                    current_step="检查云台图片目录",
+                    step_status="running",
+                    error="",
+                )
+                try:
+                    compass_request.ensure_remote_image_directory(self.ip)
+                except Exception as e:
+                    failed_status = self._build_status_by_index(task_names, i, current_running=False)
+                    failed_status[task_name] = "failed"
+                    error_msg = f"云台图片目录检查失败: {e}"
+                    self.save_task_status(
+                        failed_status,
+                        current_step="云台图片目录检查失败",
+                        step_status="failed",
+                        error=error_msg,
+                        result="failed",
+                    )
+                    failed_status["error"] = error_msg
+                    return failed_status
+
+                self.save_task_status(
+                    results,
+                    current_step="云台图片目录已就绪",
+                    step_status="success",
+                    error="",
+                )
+
             # HSR云台任务特殊处理
             if self.jixing == "HSR" and task_name == "云台" and task_id == "hsr_yuntai":
                 try:

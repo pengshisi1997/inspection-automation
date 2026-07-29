@@ -5,37 +5,17 @@
     <!-- 防撞条测试结果显示区域 -->
     <div class="button-info">
         <h3>测试结果</h3>
-        {% if current_model and model_config[current_model].get('anti_collision') %}
-            {% for strip in model_config[current_model]['anti_collision'] %}
+        {% for collision_task in get_subtasks(current_model, 'anti_collision') %}
+            {% set strip = collision_task.id %}
                 <div class="button-item">
-                    <span class="button-label">
-                        {% if strip == 'front' %}前防撞条{% elif strip == 'back' %}后防撞条{% elif strip == 'left' %}左防撞条{% elif strip == 'right' %}右防撞条{% else %}{{ strip }}防撞条{% endif %}:
-                    </span>
+                    <span class="button-label">{{ collision_task.label }}:</span>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span class="button-value" id="{{ strip }}-result">未检测</span>
                         <input type="number" id="{{ strip }}-newton" placeholder="输入N,标准<35N" style="width: 120px; padding: 4px 8px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px;">
                         <button class="btn btn-sm btn-primary" id="{{ strip }}-test" onclick="testAntiCollision('{{ strip }}')">测试</button>
                     </div>
                 </div>
-            {% endfor %}
-        {% else %}
-            <div class="button-item">
-                <span class="button-label">前防撞条:</span>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span class="button-value" id="front-result">未检测</span>
-                    <input type="number" id="front-newton" placeholder="输入N,标准<35N" style="width: 120px; padding: 4px 8px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px;">
-                    <button class="btn btn-sm btn-primary" id="front-test" onclick="testAntiCollision('front')">测试</button>
-                </div>
-            </div>
-            <div class="button-item">
-                <span class="button-label">后防撞条:</span>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span class="button-value" id="back-result">未检测</span>
-                    <input type="number" id="back-newton" placeholder="输入N,标准<35N" style="width: 120px; padding: 4px 8px; font-size: 14px; border: 1px solid #ddd; border-radius: 4px;">
-                    <button class="btn btn-sm btn-primary" id="back-test" onclick="testAntiCollision('back')">测试</button>
-                </div>
-            </div>
-        {% endif %}
+        {% endfor %}
     </div>
     
     <div class="ui-buttons">
@@ -92,11 +72,7 @@
     // 初始化防撞条状态
     function initAntiCollisionStatus() {
         // 从模板中获取当前机型的防撞条子项配置
-        const collisionStrips = {% if current_model and model_config[current_model].get('anti_collision') %}
-            {{ model_config[current_model]['anti_collision'] | tojson }}
-        {% else %}
-            ['front', 'back']
-        {% endif %};
+        const collisionStrips = {{ get_subtasks(current_model, 'anti_collision') | tojson }}.map(task => task.id);
         
         // 初始化状态对象
         collisionStrips.forEach(strip => {
@@ -167,11 +143,7 @@
     function endTest(testType, result) {
         // 收集所有防撞条的牛顿值
         const newtonValues = {};
-        const collisionStrips = {% if current_model and model_config[current_model].get('anti_collision') %}
-            {{ model_config[current_model]['anti_collision'] | tojson }}
-        {% else %}
-            ['front', 'back']
-        {% endif %};
+        const collisionStrips = {{ get_subtasks(current_model, 'anti_collision') | tojson }}.map(task => task.id);
         
         collisionStrips.forEach(strip => {
             const newtonInput = document.getElementById(`${strip}-newton`);

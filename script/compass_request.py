@@ -8,6 +8,76 @@ import time
 import paramiko
 
 
+def ensure_remote_map_permissions(
+    ip: str,
+    remote_path: str = "/home/youibot/youibot_map/",
+    username: str = "youibot",
+    password: str = "youibot",
+    port: int = 22,
+):
+    """上传地图前通过 SSH 放开机器人地图目录权限。"""
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        client.connect(
+            hostname=ip,
+            port=port,
+            username=username,
+            password=password,
+            timeout=10,
+        )
+        stdin, stdout, stderr = client.exec_command(
+            f"sudo -S -p '' chmod 777 {remote_path}",
+            timeout=15,
+        )
+        stdin.write(password + "\n")
+        stdin.flush()
+        exit_code = stdout.channel.recv_exit_status()
+        error_text = stderr.read().decode("utf-8", errors="replace").strip()
+        if exit_code != 0:
+            raise RuntimeError(error_text or f"chmod 退出码: {exit_code}")
+    finally:
+        client.close()
+
+
+def ensure_remote_image_directory(
+    ip: str,
+    remote_path: str = "/server/data/image/",
+    username: str = "youibot",
+    password: str = "youibot",
+    port: int = 22,
+):
+    """云台任务前确保远程图片目录存在，并将权限设置为 777。"""
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        client.connect(
+            hostname=ip,
+            port=port,
+            username=username,
+            password=password,
+            timeout=10,
+        )
+        command = (
+            f"if [ ! -d {remote_path} ]; then "
+            f"sudo -S -p '' sh -c 'mkdir -p {remote_path} && chmod 777 {remote_path}'; "
+            f"else sudo -S -p '' chmod 777 {remote_path}; "
+            f"fi; test -d {remote_path} && "
+            f"[ \"$(stat -c '%a' {remote_path})\" = \"777\" ]"
+        )
+        stdin, stdout, stderr = client.exec_command(command, timeout=15)
+        stdin.write(password + "\n")
+        stdin.flush()
+        exit_code = stdout.channel.recv_exit_status()
+        error_text = stderr.read().decode("utf-8", errors="replace").strip()
+        if exit_code != 0:
+            raise RuntimeError(error_text or f"创建目录退出码: {exit_code}")
+    finally:
+        client.close()
+
+
 def get_yuntai_task(ip):
 
     # API URL
@@ -202,6 +272,8 @@ def import_map_data(ip: str, local_path: str, model: str = None):
     if not os.path.isfile(local_path):
         raise FileNotFoundError(f"文件不存在: {local_path}")
 
+    ensure_remote_map_permissions(ip)
+
     url = f"http://{ip}:8080/api/v3/export/importMapData"
 
     # 这些头可选；不要手动设置 Content-Type，让 requests 自动带 boundary
@@ -224,12 +296,13 @@ def import_map_data(ip: str, local_path: str, model: str = None):
         resp = requests.post(url, headers=headers, files=files, timeout=60)
 
     if model == "HSR":
-        print(1111111111111111111111111111111111111111111111)
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         hsr_map_folder = os.path.join(project_root, "map", "HSR", "7640a72f-53e5-11f1-9b5e-0242ac110002")
         if os.path.isdir(hsr_map_folder):
             success, msg = upload_map_folder(ip, hsr_map_folder)
             print(f"HSR地图文件夹上传: {msg}")
+            if not success:
+                raise RuntimeError(msg)
 
     return resp.status_code, resp.text
 
@@ -367,11 +440,24 @@ def start_mission(ip: str, mission_id: str, timeout: int = 10):
 
 
 # 上传任务
-def upload_task(ip: str, mission_dir: str = "mission"):
+def upload_task(
+    ip: str,
+    mission_dir: str = "mission",
+    progress_callback=None,
+    lookup_batch_size: int = 2000,
+    insert_batch_size: int = 1000,
+):
     """
     该函数用于将当前路径中的 CSV 文件数据批量导入到 MySQL 数据库对应的表中。
     涉及的表包括 'mission'、'mission_action'、'mission_work'、'mission_work_action'。
+
+    为避免每次动态测试都重复传输全部任务数据，会先按主键查询机器人中已存在
+    的记录，只上传缺失行。progress_callback 用于向前端报告分表进度。
     """
+    def report(message):
+        if progress_callback:
+            progress_callback(message)
+
     # 目标数据库连接信息
     connection = mysql.connector.connect(
         host=ip,
@@ -383,10 +469,13 @@ def upload_task(ip: str, mission_dir: str = "mission"):
     # 表名列表
     tables = ['mission', 'mission_action', 'mission_work', 'mission_work_action', 'mission_action_parameter']
 
+    cursor = None
+    summary = {}
+
     try:
         cursor = connection.cursor()
 
-        for table in tables:
+        for table_index, table in enumerate(tables, start=1):
             # 拼接 CSV 文件的完整路径
             if os.path.isabs(mission_dir):
                 csv_file_path = os.path.join(mission_dir, f"{table}.csv")
@@ -397,41 +486,102 @@ def upload_task(ip: str, mission_dir: str = "mission"):
             # 检查 CSV 文件是否存在
             if not os.path.exists(csv_file_path):
                 print(f"文件 {csv_file_path} 不存在，跳过该表的导入。")
+                summary[table] = {"total": 0, "uploaded": 0, "skipped": True}
                 continue
 
-            # 从 CSV 文件加载数据
+            # 先只读取主键列。任务已导入过时，可以避免反复解析包含大段
+            # parameters/result_data 的完整 CSV。
+            try:
+                id_df = pd.read_csv(
+                    csv_file_path,
+                    usecols=["id"],
+                    dtype={"id": str},
+                    keep_default_na=False,
+                )
+            except ValueError as e:
+                raise RuntimeError(f"{csv_file_path} 缺少 id 列，无法增量导入") from e
+            except Exception as e:
+                raise RuntimeError(f"读取文件 {csv_file_path} 时出错：{e}") from e
+
+            total_rows = len(id_df.index)
+            report(f"上传任务（{table_index}/{len(tables)}）：检查 {table}，共 {total_rows} 条")
+
+            if total_rows == 0:
+                summary[table] = {"total": 0, "uploaded": 0, "skipped": True}
+                continue
+
+            # 分批查询本次 CSV 中已经存在的主键。相比重复发送整行数据，
+            # UUID 查询的数据量很小，尤其能显著缩短 MS 大任务文件的重复导入。
+            local_ids = id_df["id"].tolist()
+            existing_ids = set()
+            for start in range(0, total_rows, lookup_batch_size):
+                id_batch = local_ids[start:start + lookup_batch_size]
+                placeholders = ", ".join(["%s"] * len(id_batch))
+                cursor.execute(
+                    f"SELECT id FROM `{table}` WHERE id IN ({placeholders})",
+                    tuple(id_batch),
+                )
+                existing_ids.update(str(row[0]) for row in cursor.fetchall())
+
+            missing_ids = set(local_ids) - existing_ids
+            missing_rows = sum(local_id in missing_ids for local_id in local_ids)
+
+            if missing_rows == 0:
+                print(f"{table} 已是最新，跳过 {total_rows} 条重复数据")
+                report(f"上传任务（{table_index}/{len(tables)}）：{table} 已是最新")
+                summary[table] = {
+                    "total": total_rows,
+                    "uploaded": 0,
+                    "skipped": True,
+                }
+                continue
+
+            # 只有确实存在缺失记录时才加载完整数据。
             try:
                 df = pd.read_csv(csv_file_path)
             except Exception as e:
-                print(f"读取文件 {csv_file_path} 时出错：{e}")
-                continue
-
-            # 替换 NaN 值为 None，以适配 MySQL 的插入要求
+                raise RuntimeError(f"读取文件 {csv_file_path} 时出错：{e}") from e
             df = df.replace({np.nan: None})
+            missing_df = df.loc[df["id"].astype(str).isin(missing_ids)]
 
             # 生成插入 SQL 语句
-            placeholders = ', '.join(['%s'] * len(df.columns))
-            columns = ', '.join(df.columns)
-            sql = f"INSERT IGNORE INTO {table} ({columns}) VALUES ({placeholders})"
+            value_placeholders = ", ".join(["%s"] * len(df.columns))
+            columns = ", ".join(f"`{column}`" for column in df.columns)
+            sql = f"INSERT IGNORE INTO `{table}` ({columns}) VALUES ({value_placeholders})"
 
             # 将 DataFrame 数据转换为列表形式
-            data = df.values.tolist()
+            data = missing_df.values.tolist()
 
-            # 执行批量插入操作
-            try:
-                cursor.executemany(sql, data)
-                connection.commit()
-                print(f"{table} 数据库导入成功")
-            except mysql.connector.Error as err:
-                print(f"导入表 {table} 数据时出错：{err}")
+            # 控制单次数据包大小，并按实际完成量更新页面进度。
+            for start in range(0, missing_rows, insert_batch_size):
+                batch = data[start:start + insert_batch_size]
+                cursor.executemany(sql, batch)
+                completed = min(start + len(batch), missing_rows)
+                percent = int(completed * 100 / missing_rows)
+                report(
+                    f"上传任务（{table_index}/{len(tables)}）："
+                    f"{table} {completed}/{missing_rows}（{percent}%）"
+                )
+
+            connection.commit()
+            print(f"{table} 数据库增量导入成功，新增 {missing_rows}/{total_rows} 条")
+            summary[table] = {
+                "total": total_rows,
+                "uploaded": missing_rows,
+                "skipped": False,
+            }
 
     except mysql.connector.Error as err:
-        print(f"数据库连接或操作出错：{err}")
+        connection.rollback()
+        raise RuntimeError(f"数据库连接或操作出错：{err}") from err
     finally:
         # 关闭游标和连接
         if cursor:
             cursor.close()
         connection.close()
+
+    report("上传任务完成")
+    return summary
 
 
 # 停止所有控制

@@ -7,14 +7,12 @@
     
     <div class="button-info">
         <h3>测试结果</h3>
-        {% if current_model and model_config[current_model].get('light') %}
-            {% for color in model_config[current_model]['light'] %}
+        {% for light_task in get_subtasks(current_model, 'light') %}
+            {% set color = light_task.id %}
                 <div class="button-item" id="{{ color }}-item">
-                    <span class="button-label">
-                        {% if color == 'red' %}红色灯光{% elif color == 'green' %}绿色灯光{% elif color == 'blue' %}蓝色灯光{% elif color == 'front_light' %}前补光灯{% elif color == 'back_light' %}后补光灯{% elif color == 'charge_relay' %}充电继电器{% else %}{{ color }}灯光{% endif %}:
-                    </span>
+                    <span class="button-label">{{ light_task.label }}:</span>
                     <span class="button-value" id="{{ color }}-status">未检测</span>
-                    {% if color in ['front_light', 'back_light', 'charge_relay'] %}
+                    {% if light_task.get('switchable') %}
                         <div>
                             <button class="btn btn-sm btn-primary" onclick="testLight('{{ color }}')">开启</button>
                             <button class="btn btn-sm btn-secondary" onclick="turnOffLight('{{ color }}')">关闭</button>
@@ -23,24 +21,7 @@
                         <button class="btn btn-sm btn-primary" onclick="testLight('{{ color }}')">点亮</button>
                     {% endif %}
                 </div>
-            {% endfor %}
-        {% else %}
-            <div class="button-item" id="red-item">
-                <span class="button-label">红色灯光:</span>
-                <span class="button-value" id="red-status">未检测</span>
-                <button class="btn btn-sm btn-primary" onclick="testLight('red')">点亮</button>
-            </div>
-            <div class="button-item" id="blue-item">
-                <span class="button-label">蓝色灯光:</span>
-                <span class="button-value" id="blue-status">未检测</span>
-                <button class="btn btn-sm btn-primary" onclick="testLight('blue')">点亮</button>
-            </div>
-            <div class="button-item" id="green-item">
-                <span class="button-label">绿色灯光:</span>
-                <span class="button-value" id="green-status">未检测</span>
-                <button class="btn btn-sm btn-primary" onclick="testLight('green')">点亮</button>
-            </div>
-        {% endif %}
+        {% endfor %}
     </div>
     
     <div class="ui-buttons">
@@ -142,11 +123,7 @@
     // 初始化灯光状态
     function initLightStatus() {
         // 从模板中获取当前机型的灯光子项配置
-        const lightColors = {% if current_model and model_config[current_model].get('light') %}
-            {{ model_config[current_model]['light'] | tojson }}
-        {% else %}
-            ['red', 'blue', 'green']
-        {% endif %};
+        const lightColors = {{ get_subtasks(current_model, 'light') | tojson }}.map(task => task.id);
         
         // 初始化状态对象
         lightColors.forEach(color => {

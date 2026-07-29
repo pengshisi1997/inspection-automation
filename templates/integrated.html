@@ -6,92 +6,19 @@
     <!-- 任务状态显示区域 -->
     <div class="task-info">
         <h3>任务状态</h3>
-        <div class="task-item">
-            <span class="task-label">light_photo (可见光拍照):</span>
-            <div class="task-status-container">
-                <span class="task-value" id="task-light_photo">未测试</span>
-                <span class="task-loading" id="loading-light_photo"></span>
-                <button class="btn btn-primary btn-small" onclick="viewIntegratedResult('light_photo')">查看结果</button>
-                <button class="btn btn-primary btn-small" onclick="testSingleTask('light_photo')">单独测试</button>
+        {% for task in get_subtasks(current_model, 'integrated') %}
+            <div class="task-item">
+                <span class="task-label">{{ task.id }} ({{ task.label }}):</span>
+                <div class="task-status-container">
+                    <span class="task-value" id="task-{{ task.id }}">未测试</span>
+                    <span class="task-loading" id="loading-{{ task.id }}"></span>
+                    {% if task.get('view_result') %}
+                        <button class="btn btn-primary btn-small" onclick='viewIntegratedResult({{ task.id | tojson }})'>查看结果</button>
+                    {% endif %}
+                    <button class="btn btn-primary btn-small" onclick='testSingleTask({{ task.id | tojson }})'>单独测试</button>
+                </div>
             </div>
-        </div>
-        <div class="task-item">
-            <span class="task-label">light_video (可见光录像):</span>
-            <div class="task-status-container">
-                <span class="task-value" id="task-light_video">未测试</span>
-                <span class="task-loading" id="loading-light_video"></span>
-                <button class="btn btn-primary btn-small" onclick="viewIntegratedResult('light_video')">查看结果</button>
-                <button class="btn btn-primary btn-small" onclick="testSingleTask('light_video')">单独测试</button>
-            </div>
-        </div>
-        <div class="task-item">
-            <span class="task-label">thermal_photo (热成像拍照):</span>
-            <div class="task-status-container">
-                <span class="task-value" id="task-thermal_photo">未测试</span>
-                <span class="task-loading" id="loading-thermal_photo"></span>
-                <button class="btn btn-primary btn-small" onclick="viewIntegratedResult('thermal_photo')">查看结果</button>
-                <button class="btn btn-primary btn-small" onclick="testSingleTask('thermal_photo')">单独测试</button>
-            </div>
-        </div>
-        <div class="task-item">
-            <span class="task-label">thermal_video (热成像录像):</span>
-            <div class="task-status-container">
-                <span class="task-value" id="task-thermal_video">未测试</span>
-                <span class="task-loading" id="loading-thermal_video"></span>
-                <button class="btn btn-primary btn-small" onclick="viewIntegratedResult('thermal_video')">查看结果</button>
-                <button class="btn btn-primary btn-small" onclick="testSingleTask('thermal_video')">单独测试</button>
-            </div>
-        </div>
-        <div class="task-item">
-            <span class="task-label">thermal_Temperature (测温任务):</span>
-            <div class="task-status-container">
-                <span class="task-value" id="task-thermal_Temperature">未测试</span>
-                <span class="task-loading" id="loading-thermal_Temperature"></span>
-                <button class="btn btn-primary btn-small" onclick="viewIntegratedResult('thermal_Temperature')">查看结果</button>
-                <button class="btn btn-primary btn-small" onclick="testSingleTask('thermal_Temperature')">单独测试</button>
-            </div>
-        </div>
-        <div class="task-item">
-            <span class="task-label">light_PTZ (云台动作):</span>
-            <div class="task-status-container">
-                <span class="task-value" id="task-light_PTZ">未测试</span>
-                <span class="task-loading" id="loading-light_PTZ"></span>
-                <button class="btn btn-primary btn-small" onclick="testSingleTask('light_PTZ')">单独测试</button>
-            </div>
-        </div>
-        <div class="task-item">
-            <span class="task-label">light_point (云台移动变倍至预置点10):</span>
-            <div class="task-status-container">
-                <span class="task-value" id="task-light_point">未测试</span>
-                <span class="task-loading" id="loading-light_point"></span>
-                <button class="btn btn-primary btn-small" onclick="testSingleTask('light_point')">单独测试</button>
-            </div>
-        </div>
-        <div class="task-item">
-            <span class="task-label">thermal_point (云台移动变倍至预置点11):</span>
-            <div class="task-status-container">
-                <span class="task-value" id="task-thermal_point">未测试</span>
-                <span class="task-loading" id="loading-thermal_point"></span>
-                <button class="btn btn-primary btn-small" onclick="testSingleTask('thermal_point')">单独测试</button>
-            </div>
-        </div>
-        <div class="task-item">
-            <span class="task-label">Manual_focusing (云台变成手动聚焦模式):</span>
-            <div class="task-status-container">
-                <span class="task-value" id="task-Manual_focusing">未测试</span>
-                <span class="task-loading" id="loading-Manual_focusing"></span>
-                <button class="btn btn-primary btn-small" onclick="testSingleTask('Manual_focusing')">单独测试</button>
-            </div>
-        </div>
-        <div class="task-item">
-            <span class="task-label">Auto_focusing (云台变成自动聚焦模式):</span>
-            <div class="task-status-container">
-                <span class="task-value" id="task-Auto_focusing">未测试</span>
-                <span class="task-loading" id="loading-Auto_focusing"></span>
-                <button class="btn btn-primary btn-small" onclick="testSingleTask('Auto_focusing')">单独测试</button>
-            </div>
-        </div>
-
+        {% endfor %}
     </div>
     
     <div class="ui-buttons">
@@ -213,31 +140,20 @@
 
 <script>
     // 存储当前测试状态，用于显示实时进度
-    let currentTestProgress = {
-        'light_photo': 'pending',
-        'light_video': 'pending',
-        'thermal_photo': 'pending',
-        'thermal_video': 'pending',
-        'thermal_Temperature': 'pending',
-        'light_PTZ': 'pending',
-        'light_point': 'pending',
-        'thermal_point': 'pending',
-        'Manual_focusing': 'pending',
-        'Auto_focusing': 'pending'
-    };
+    const configuredIntegratedTasks = {{ get_subtasks(current_model, 'integrated') | tojson }};
+    const emptyIntegratedProgress = status => Object.fromEntries(
+        configuredIntegratedTasks.map(task => [task.id, status])
+    );
+    let currentTestProgress = emptyIntegratedProgress('pending');
     
     // 控制是否暂停刷新任务状态
     let isRefreshPaused = false;
     let hasShownIntegratedError = false;
 
     // 任务标题映射
-    const taskTitleMap = {
-        'light_photo': '可见光拍照',
-        'light_video': '可见光录像',
-        'thermal_photo': '热成像拍照',
-        'thermal_video': '热成像录像',
-        'thermal_Temperature': '测温任务'
-    };
+    const taskTitleMap = Object.fromEntries(
+        configuredIntegratedTasks.map(task => [task.id, task.label])
+    );
 
     function updateIntegratedError(errorText) {
         const errorEl = document.getElementById('step-error');
@@ -411,18 +327,10 @@
 
     function startTest(testType) {
         // 初始化测试状态
-        currentTestProgress = {
-            'light_photo': 'running',
-            'light_video': 'pending',
-            'thermal_photo': 'pending',
-            'thermal_video': 'pending',
-            'thermal_Temperature': 'pending',
-            'light_PTZ': 'pending',
-            'light_point': 'pending',
-            'thermal_point': 'pending',
-            'Manual_focusing': 'pending',
-            'Auto_focusing': 'pending'
-        };
+        currentTestProgress = emptyIntegratedProgress('pending');
+        if (configuredIntegratedTasks.length) {
+            currentTestProgress[configuredIntegratedTasks[0].id] = 'running';
+        }
         updateIntegratedError('');
         
         // 更新UI显示实时进度
@@ -449,18 +357,7 @@
         .catch(error => {
             console.error('请求出错:', error);
             // 测试失败时更新状态
-            currentTestProgress = {
-                'light_photo': 'failed',
-                'light_video': 'failed',
-                'thermal_photo': 'failed',
-                'thermal_video': 'failed',
-                'light_PTZ': 'failed',
-                'light_point': 'failed',
-                'thermal_point': 'failed',
-                'Manual_focusing': 'failed',
-                'Auto_focusing': 'failed',
-                'thermal_Temperature': 'failed'
-            };
+            currentTestProgress = emptyIntegratedProgress('failed');
             updateTaskStatus(currentTestProgress, true);
             updateIntegratedError('启动请求异常');
         });

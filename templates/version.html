@@ -13,60 +13,18 @@
                 </tr>
             </thead>
             <tbody id="version-table-body">
-                {% set version_labels = {
-                    'pilot_version': 'Pilot版本',
-                    'compass_version': 'Compass版本',
-                    'mirror_system': '工控机镜像版本',
-                    'mirror_system_hsr': '上集成工控机镜像',
-                    'mos_version': 'MOS版本',
-                    'mos_version_hsr': '上集成MOS版本',
-                    'rcc_base_version': 'RCC_Base版本',
-                    'robot_version': 'Robot版本',
-                    'rws_version': 'RWS版本',
-                    'youiscript_version': 'Youiscript版本'
-                } %}
-                {% if current_model and model_config[current_model].get('version') %}
-                    {% for version_item in model_config[current_model]['version'] %}
+                {% for version_task in get_subtasks(current_model, 'version') %}
+                    {% set version_item = version_task.id %}
                         <tr>
                             <td class="version-type">
-                                {{ version_labels.get(version_item, version_item + '版本') }}
+                                {{ version_task.label }}
                             </td>
                             <td class="standard-version" data-key="{{ version_item }}">未获取</td>
                             <td class="current-version">
                                 <span id="{{ version_item | replace('_', '-') }}">未检测</span>
                             </td>
                         </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td class="version-type">Pilot版本</td>
-                        <td class="standard-version" data-key="pilot_version">未获取</td>
-                        <td class="current-version">
-                            <span id="pilot-version">未检测</span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="version-type">Compass版本</td>
-                        <td class="standard-version" data-key="compass_version">未获取</td>
-                        <td class="current-version">
-                            <span id="compass-version">未检测</span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="version-type">工控机镜像版本</td>
-                        <td class="standard-version" data-key="mirror_system">未获取</td>
-                        <td class="current-version">
-                            <span id="mirror-system">未检测</span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="version-type">RCC_Base版本</td>
-                        <td class="standard-version" data-key="rcc_base_version">未获取</td>
-                        <td class="current-version">
-                            <span id="rcc-base-version">未检测</span>
-                        </td>
-                    </tr>
-                {% endif %}
+                {% endfor %}
             </tbody>
         </table>
     </div>

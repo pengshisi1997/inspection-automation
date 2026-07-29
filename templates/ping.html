@@ -5,41 +5,13 @@
     <!-- 网络设备列表 -->
     <div class="sensor-list">
         <h3>设备状态</h3>
-        {% if current_model and model_config[current_model].get('ping') %}
-            {% for ip in model_config[current_model]['ping'] %}
-                <div class="sensor-item">
-                    <span class="sensor-name">
-                        {% if ip == '192.168.0.8' %}4g运维 ({{ ip }}){% elif ip == '192.168.2.63' %}云台 ({{ ip }}){% elif ip == '192.168.2.250' %}路由器 ({{ ip }}){% elif ip == '192.168.0.100' %}内网口 ({{ ip }}){% elif ip == '192.168.2.2' %}外网口 ({{ ip }}){% elif ip == '192.168.0.100:8081' %}Compass接口 ({{ ip }}){% elif ip == '192.168.2.100' %}算力板 ({{ ip }}){% elif ip == '192.168.0.50' %}PLC ({{ ip }}){% elif ip == '192.168.2.88' %}机械臂 ({{ ip }}){% elif ip == '192.168.2.90' %}MOS工控回机 ({{ ip }}){% elif ip == '192.168.2.89' %}大恒相机 ({{ ip }}){% else %}{{ ip }}{% endif %}:
-                    </span>
+        {% for ping_task in get_subtasks(current_model, 'ping') %}
+            {% set ip = ping_task.id %}
+                <div class="sensor-item" data-ip="{{ ip }}">
+                    <span class="sensor-name">{{ ping_task.label }}:</span>
                     <span class="sensor-status">未检测</span>
                 </div>
-            {% endfor %}
-        {% else %}
-            <div class="sensor-item">
-                <span class="sensor-name">4g运维 (192.168.0.8):</span>
-                <span class="sensor-status">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">云台 (192.168.2.63):</span>
-                <span class="sensor-status">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">路由器 (192.168.2.250):</span>
-                <span class="sensor-status">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">内网口 (192.168.0.100):</span>
-                <span class="sensor-status">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">外网口 (192.168.2.2):</span>
-                <span class="sensor-status">未检测</span>
-            </div>
-            <div class="sensor-item">
-                <span class="sensor-name">Compass接口 (192.168.0.100:8081):</span>
-                <span class="sensor-status">未检测</span>
-            </div>
-        {% endif %}
+        {% endfor %}
     </div>
     
     <div class="ui-buttons">
@@ -123,48 +95,14 @@
     }
     
     function updatePingInfo(pingInfo) {
-        // 映射设备IP
-        const deviceMap = {
-            '192.168.0.8': '4g运维 (192.168.0.8)',
-            '192.168.2.63': '云台 (192.168.2.63)',
-            '192.168.2.250': '路由器 (192.168.2.250)',
-            '192.168.0.100': '内网口 (192.168.0.100)',
-            '192.168.2.2': '外网口 (192.168.2.2)',
-            '192.168.0.100:8081': 'Compass接口 (192.168.0.100:8081)',
-            '192.168.2.100': '算力板 (192.168.2.100)',
-            '192.168.0.50': 'PLC (192.168.0.50)',
-            '192.168.2.88': '机械臂 (192.168.2.88)',
-            '192.168.2.90': 'MOS工控回机 (192.168.2.90)',
-            '192.168.2.89': '大恒相机 (192.168.2.89)'
-        };
-        
         console.log('Ping测试结果:', pingInfo);
         
         const sensorItems = document.querySelectorAll('.sensor-item');
         sensorItems.forEach(item => {
-            const sensorName = item.querySelector('.sensor-name').textContent.trim().replace(/:$/, '');
-            console.log('sensorName:', sensorName);
-            console.log('pingInfo:', pingInfo);
+            const ip = item.dataset.ip;
             const statusElement = item.querySelector('.sensor-status');
-            
-            // 找到对应的IP
-            for (const [ip, name] of Object.entries(deviceMap)) {
-                if (name === sensorName) {
-                    // 检查IP是否在pingInfo中
-                    if (ip in pingInfo) {
-                        const delay = pingInfo[ip];
-                        if (delay) {
-                            statusElement.textContent = delay;
-                        } else {
-                            statusElement.textContent = '超时';
-                        }
-                    } else {
-                        // 未测试
-                        statusElement.textContent = '未检测';
-                    }
-                    break;
-                }
-            }
+            if (!ip) return;
+            statusElement.textContent = ip in pingInfo ? (pingInfo[ip] || '超时') : '未检测';
         });
     }
     

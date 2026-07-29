@@ -9,13 +9,15 @@ from log import Logger
 from script.public import download_latest_image
 from config.model_config import (
     DEFAULT_MODEL,
-    INTEGRATED_TASK_DESCRIPTIONS,
     MODEL_CONFIG,
     MODEL_OPTIONS,
+    SUBTASK_CATALOG,
     TEST_NAMES,
     TEST_ORDER,
     VERSION_STANDARDS,
     get_version_fields,
+    get_subtask_definitions,
+    get_subtask_descriptions,
     IMAGE_DIR,
     IMAGE_YUNTAI_DIR,
     TEST_RECORD_DIR,
@@ -145,6 +147,8 @@ def inject_shared_config():
     return {
         'model_options': MODEL_OPTIONS,
         'test_names': TEST_NAMES,
+        'subtask_catalog': SUBTASK_CATALOG,
+        'get_subtasks': get_subtask_definitions,
     }
 
 
@@ -244,6 +248,7 @@ dynamic_inspectors = {}
 
 # 存储LidarFieldReader实例，以IP地址为键
 lidar_readers = {}
+lidar_reader_lock = threading.Lock()
 
 dynamic_workers = {}
 dynamic_worker_lock = threading.Lock()
@@ -252,8 +257,6 @@ dynamic_worker_lock = threading.Lock()
 integrated_workers = {}
 integrated_worker_lock = threading.Lock()
 
-# 集成测试子任务描述
-integrated_task_descriptions = INTEGRATED_TASK_DESCRIPTIONS
 model_config = MODEL_CONFIG
 version_standards = VERSION_STANDARDS
 
@@ -930,9 +933,6 @@ def get_dynamic_info():
     if not bound_ip:
         return jsonify({'success': False, 'error': '未绑定IP'})
     
-    # 从script.pdf模块导入动态测试子任务描述
-    from script.pdf import dynamic_task_descriptions
-    
     # 从结果文件中读取测试内容
     results = read_result_file(bound_ip)
     dynamic_info = results.get('dynamic', {})
@@ -951,7 +951,7 @@ def get_dynamic_info():
         'success': True, 
         'task_status': task_status, 
         'test_time': dynamic_info.get('time', ''),
-        'task_descriptions': dynamic_task_descriptions,
+        'task_descriptions': get_subtask_descriptions(current_model, 'dynamic'),
         'current_step': dynamic_info.get('current_step', ''),
         'step_status': dynamic_info.get('step_status', ''),
         'error': dynamic_info.get('error', ''),
@@ -1053,7 +1053,7 @@ def get_integrated_info():
         'success': True, 
         'task_status': task_status, 
         'test_time': integrated_info.get('time', ''),
-        'task_descriptions': integrated_task_descriptions,
+        'task_descriptions': get_subtask_descriptions(current_model, 'integrated'),
         'error': integrated_info.get('error', ''),
         'result': integrated_info.get('result', ''),
         'current_task': integrated_info.get('current_task', '')
@@ -1156,18 +1156,31 @@ def get_lidar_field():
     bound_ip = session.get('bound_ip')
     if not bound_ip:
         return jsonify({'success': False, 'error': '未绑定IP'})
-    
-    if bound_ip not in lidar_readers:
-        try:
-            from script.get_laser_filed import LidarFieldReader
-            reader = LidarFieldReader(bound_ip, interval=0.2, recv_timeout=0.8)
-            lidar_readers[bound_ip] = reader
-            reader.start()
-        except Exception:
-            return jsonify({'success': True, 'data': None})
-    
-    reader = lidar_readers[bound_ip]
-    return jsonify({'success': True, 'data': reader.last_data})
+
+    reader = lidar_readers.get(bound_ip)
+    if not reader:
+        return jsonify({'success': True, 'data': None, 'active': False})
+
+    return jsonify({'success': True, 'data': reader.last_data, 'active': True})
+
+
+@app.route('/start_lidar_field', methods=['POST'])
+def start_lidar_field():
+    bound_ip = session.get('bound_ip')
+    if not bound_ip:
+        return jsonify({'success': False, 'error': '未绑定IP'})
+
+    try:
+        with lidar_reader_lock:
+            reader = lidar_readers.get(bound_ip)
+            if not reader:
+                from script.get_laser_filed import LidarFieldReader
+                reader = LidarFieldReader(bound_ip, interval=0.2, recv_timeout=0.8)
+                reader.start()
+                lidar_readers[bound_ip] = reader
+        return jsonify({'success': True, 'data': reader.last_data, 'active': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'启动当前区域查看失败: {e}'})
 
 
 
@@ -1490,7 +1503,6 @@ def start_test():
         
         try:
             from script.dynamic import InspectionAutomation
-            from script.get_laser_filed import LidarFieldReader
             results = read_result_file(bound_ip)
             robot_info = results.get('robot_info', {})
             current_model = robot_info.get('model') or DEFAULT_MODEL
@@ -1506,12 +1518,7 @@ def start_test():
                 if old_thread and old_thread.is_alive():
                     old_thread.join(timeout=2)
 
-            if bound_ip not in lidar_readers:
-                reader = LidarFieldReader(bound_ip, interval=0.2, recv_timeout=0.8)
-                lidar_readers[bound_ip] = reader
-                reader.start()
-
-            inspector = InspectionAutomation(bound_ip, current_model)
+            inspector = InspectionAutomation(bound_ip, current_model, auto_initialize=False)
             dynamic_inspectors[bound_ip] = inspector
             
             # 根据机型配置设置初始状态，保持保存、读取和页面展示一致
@@ -1523,6 +1530,9 @@ def start_test():
 
             def run_tasks_async(run_id_local, stop_event_local):
                 try:
+                    inspector.initialize(stop_event=stop_event_local)
+                    if stop_event_local.is_set():
+                        return
                     task_results = inspector.run_tasks(stop_event=stop_event_local)
 
                     with dynamic_worker_lock:
