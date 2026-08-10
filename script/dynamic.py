@@ -217,9 +217,13 @@ class InspectionAutomation:
         for i, task_name in enumerate(task_names):
             if stop_event and stop_event.is_set():
                 interrupted_status = {name: ("success" if idx < i else "failed") for idx, name in enumerate(task_names)}
-                interrupted_error = "动态测试已中断，并由新的开始请求接管"
-                self.save_task_status(interrupted_status, current_step="动态测试已中断", step_status="stopped", error=interrupted_error, result="failed")
-                interrupted_status["error"] = interrupted_error
+                self.save_task_status(
+                    interrupted_status,
+                    current_step="动态测试已停止",
+                    step_status="stopped",
+                    error="",
+                    result="pending",
+                )
                 return interrupted_status
 
             # 进入当前任务时：前 success，当前 pending，后 failed
@@ -294,9 +298,13 @@ class InspectionAutomation:
             while self.is_task_running(task_name):
                 if stop_event and stop_event.is_set():
                     interrupted_status = {name: ("success" if idx < i else "failed") for idx, name in enumerate(task_names)}
-                    interrupted_error = "动态测试已中断，并由新的开始请求接管"
-                    self.save_task_status(interrupted_status, current_step="动态测试已中断", step_status="stopped", error=interrupted_error, result="failed")
-                    interrupted_status["error"] = interrupted_error
+                    self.save_task_status(
+                        interrupted_status,
+                        current_step="动态测试已停止",
+                        step_status="stopped",
+                        error="",
+                        result="pending",
+                    )
                     return interrupted_status
 
                 print(f"任务 {task_name} 正在执行中...")

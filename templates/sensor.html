@@ -7,7 +7,7 @@
         <h3>传感器状态</h3>
         {% for sensor_task in get_subtasks(current_model, 'sensor') %}
             {% set sensor = sensor_task.id %}
-                <div class="sensor-item">
+                <div class="sensor-item" data-sensor="{{ sensor }}">
                     <span class="sensor-name">{{ sensor_task.label }}:</span>
                     <span class="sensor-status" id="{{ sensor | replace('_', '-') }}">未检测</span>
                 </div>
@@ -38,7 +38,8 @@
         margin-bottom: 10px;
         display: flex;
         justify-content: space-between;
-        padding: 5px 0;
+        padding: 7px 8px;
+        border-left: 4px solid transparent;
         border-bottom: 1px solid #eee;
     }
     .sensor-item:last-child {
@@ -50,6 +51,15 @@
     }
     .sensor-status {
         color: #666;
+    }
+    .sensor-item.is-failed {
+        border-left-color: #dc3545;
+        background-color: #fff1f0;
+    }
+    .sensor-item.is-failed .sensor-name,
+    .sensor-item.is-failed .sensor-status {
+        color: #c62828;
+        font-weight: 600;
     }
     .test-time {
         margin-top: 20px;
@@ -74,7 +84,7 @@
         .then(data => {
             hideLoading();
             if (data.success && data.sensor_info) {
-                updateSensorInfo(data.sensor_info);
+                updateSensorInfo(data.sensor_info, data.item_results);
                 // 使用后端返回的result字段，而不是自己判断
                 const result = data.result || 'success';
                 
@@ -107,17 +117,17 @@
         });
     }
     
-    function updateSensorInfo(sensorInfo) {
+    function updateSensorInfo(sensorInfo, itemResults) {
         // 遍历传感器信息对象的所有键
         Object.keys(sensorInfo).forEach(key => {
             // 跳过result和time字段
-            if (key !== 'result' && key !== 'time' && key !== 'data') {
+            if (key !== 'result' && key !== 'item_results' && key !== 'time' && key !== 'data') {
                 // 直接使用key作为元素ID
                 const elementId = key.replace(/_/g, '-');
                 const sensorEl = document.getElementById(elementId);
                 if (sensorEl) {
                     let value = sensorInfo[key];
-                    // 对拾音器进行特殊处理（仅文本，无颜色）
+                    // 对拾音器进行特殊处理
                     if (key === 'microphone') {
                         if (value === true) {
                             sensorEl.textContent = '正常';
@@ -150,7 +160,7 @@
                 const sensorEl = document.getElementById(elementId);
                 if (sensorEl) {
                     let value = sensorInfo.data[key];
-                    // 对拾音器进行特殊处理（仅文本，无颜色）
+                    // 对拾音器进行特殊处理
                     if (key === 'microphone') {
                         if (value === true) {
                             sensorEl.textContent = '正常';
@@ -175,6 +185,20 @@
                 }
             });
         }
+        applySensorItemResults(itemResults || sensorInfo.item_results || {});
+    }
+
+    function applySensorItemResults(itemResults) {
+        document.querySelectorAll('.sensor-item[data-sensor]').forEach(item => {
+            const status = itemResults[item.dataset.sensor];
+            const failed = status === 'failed';
+            item.classList.toggle('is-failed', failed);
+
+            const statusElement = item.querySelector('.sensor-status');
+            if (failed && statusElement && statusElement.textContent === '未检测') {
+                statusElement.textContent = '无数据';
+            }
+        });
     }
     
 

@@ -13,6 +13,7 @@
     
     <div class="ui-buttons">
         <button class="btn btn-primary" onclick="startTest('dynamic')">开始测试</button>
+        <button id="stop-dynamic-test-btn" class="btn btn-danger" onclick="stopDynamicTest()">停止测试</button>
         <button class="btn btn-primary" onclick="endTest('dynamic', 'success')">测试成功</button>
         <button class="btn btn-primary" onclick="endTest('dynamic', 'failed')">测试失败</button>
     </div>
@@ -91,6 +92,13 @@
 </div>
 
 <style>
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+    }
+    .btn-danger:hover {
+        background-color: #c82333;
+    }
     .task-info {
         margin: 20px 0;
         padding: 15px;
@@ -580,6 +588,51 @@
             });
             updateTaskStatus(currentTestProgress, true);
             updateDynamicError('启动请求异常');
+        });
+    }
+
+    function stopDynamicTest() {
+        if (!confirm('确定要停止动态测试及机器人上的全部任务吗？')) {
+            return;
+        }
+
+        const stopButton = document.getElementById('stop-dynamic-test-btn');
+        stopButton.disabled = true;
+        stopButton.textContent = '停止中...';
+        updateCurrentStep('正在停止动态测试', 'stopped');
+        updateDynamicError('');
+
+        fetch('/stop_dynamic_test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            updateCurrentStep(
+                data.current_step || (data.success ? '动态测试已停止' : '停止动态测试失败'),
+                data.step_status || 'stopped'
+            );
+
+            if (!data.success) {
+                updateDynamicError(data.error || '停止动态测试失败');
+                return;
+            }
+
+            currentTestProgress = {};
+            document.querySelectorAll('.task-loading').forEach(element => {
+                element.classList.remove('active');
+            });
+            alert(data.message || '动态测试及机器人全部任务已停止');
+        })
+        .catch(error => {
+            console.error('停止动态测试请求出错:', error);
+            updateDynamicError('停止动态测试请求异常');
+        })
+        .finally(() => {
+            stopButton.disabled = false;
+            stopButton.textContent = '停止测试';
         });
     }
     

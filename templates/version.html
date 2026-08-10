@@ -15,7 +15,7 @@
             <tbody id="version-table-body">
                 {% for version_task in get_subtasks(current_model, 'version') %}
                     {% set version_item = version_task.id %}
-                        <tr>
+                        <tr data-key="{{ version_item }}">
                             <td class="version-type">
                                 {{ version_task.label }}
                             </td>
@@ -78,6 +78,16 @@
         color: #666;
         width: 35%;
     }
+    .version-table tr.is-failed td {
+        color: #c62828;
+        background-color: #fff1f0;
+    }
+    .version-table tr.is-failed td:first-child {
+        box-shadow: inset 4px 0 0 #dc3545;
+    }
+    .version-table tr.is-failed .current-version {
+        font-weight: 600;
+    }
     .test-time {
         margin-top: 20px;
         font-size: 14px;
@@ -130,8 +140,8 @@
     function updateVersionInfo(versionInfo) {
         // 遍历版本信息对象的所有键
         Object.keys(versionInfo).forEach(key => {
-            // 跳过result和time字段
-            if (key !== 'result' && key !== 'time') {
+            // 跳过汇总状态、子项状态和时间字段
+            if (key !== 'result' && key !== 'item_results' && key !== 'time') {
                 // 将所有下划线转换为连字符，以匹配HTML中的id
                 const elementId = key.replace(/_/g, '-');
                 const versionEl = document.getElementById(elementId);
@@ -157,6 +167,14 @@
                     }
                 }
             }
+        });
+        applyVersionItemResults(versionInfo.item_results || {});
+    }
+
+    function applyVersionItemResults(itemResults) {
+        document.querySelectorAll('#version-table-body tr[data-key]').forEach(row => {
+            const status = itemResults[row.dataset.key];
+            row.classList.toggle('is-failed', status === 'failed');
         });
     }
     

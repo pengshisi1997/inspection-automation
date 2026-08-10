@@ -265,7 +265,19 @@ class RobotTestReport:
                         test_dir_names[safe_test_name] = test_name
                 
                 # 扫描IP目录下的所有子目录（包含未在manual_tests.json中定义的目录）
-                for scan_dir in [manual_upload_ip_dir, manual_upload_fallback_dir]:
+                # 注意：不能直接扫描全局回退目录 static/manual_upload/ 的外层，
+                # 因为该目录下可能存在不归属任何机器的共享/孤立测试项子目录
+                # （例如 static/manual_upload/外观检查/xxx.jpg），
+                # 直接扫描会导致所有机器的报告都混入同一张照片。
+                # 这里仅扫描：
+                #   1) 新结构：test_record/<ip>/manual_upload/<测试项>/
+                #   2) 旧结构回退：static/manual_upload/<当前机器IP>/<测试项>/  （按IP归属）
+                scan_dirs = [manual_upload_ip_dir]
+                if os.path.isdir(manual_upload_fallback_dir):
+                    old_ip_dir = os.path.join(manual_upload_fallback_dir, safe_robot_ip)
+                    if os.path.isdir(old_ip_dir) and os.path.abspath(old_ip_dir) != os.path.abspath(manual_upload_ip_dir):
+                        scan_dirs.append(old_ip_dir)
+                for scan_dir in scan_dirs:
                     if os.path.isdir(scan_dir):
                         for dir_name in os.listdir(scan_dir):
                             dir_path = os.path.join(scan_dir, dir_name)

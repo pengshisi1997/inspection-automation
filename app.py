@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session, send_file, send_from_directory
 import json
+import math
 import os
 import threading
 import uuid
@@ -265,6 +266,204 @@ def get_version_fields_by_model(model):
     return get_version_fields(model)
 
 
+def get_version_standards_by_model(model):
+    """读取机型版本标准，优先使用管理员保存的配置。"""
+    standards = {}
+    config_path = os.path.join(BASE_DIR, 'config', str(model or ''), 'version_config.json')
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+            if isinstance(config_data, dict):
+                standards.update(config_data)
+        except Exception as e:
+            log.error(f"读取版本配置文件失败: {str(e)}")
+
+    if not standards and model in version_standards:
+        standards.update(version_standards[model])
+    return standards
+
+
+def evaluate_version_items(model, version_info, standards=None):
+    """返回每个版本子项及版本检测总结果。"""
+    version_info = version_info if isinstance(version_info, dict) else {}
+    standards = standards if isinstance(standards, dict) else get_version_standards_by_model(model)
+    item_results = {}
+
+    for field in get_version_fields_by_model(model):
+        actual_value = version_info.get(field)
+        standard_value = standards.get(field)
+        is_error = (
+            isinstance(actual_value, str)
+            and actual_value.lstrip().startswith(('❌', '🚨', '⚠️'))
+        )
+        is_missing = actual_value is None or actual_value == ''
+
+        if is_missing or is_error:
+            item_results[field] = 'failed'
+        elif standard_value in (None, ''):
+            # 未配置标准时保留原有行为：只要成功获取到版本值就视为通过。
+            item_results[field] = 'success'
+        else:
+            item_results[field] = (
+                'success' if str(standard_value) == str(actual_value) else 'failed'
+            )
+
+    test_result = (
+        'success'
+        if item_results and all(status == 'success' for status in item_results.values())
+        else 'failed'
+    )
+    return item_results, test_result
+
+
+def _contains_nan(value):
+    if isinstance(value, dict):
+        return any(_contains_nan(item) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_contains_nan(item) for item in value)
+    try:
+        return math.isnan(float(value))
+    except (TypeError, ValueError):
+        return False
+
+
+def _sensor_item_passed(topic, data, model):
+    if data is None:
+        return False
+    if isinstance(data, str) and data.strip() in ('', '无数据', '未检测', '超时'):
+        return False
+    if isinstance(data, (list, tuple, dict)) and not data:
+        return False
+    if _contains_nan(data):
+        return False
+
+    if topic == 'cpu_hz':
+        if not isinstance(data, (list, tuple)) or not data:
+            return False
+        try:
+            return all(float(hz) >= 2400 for hz in data)
+        except (TypeError, ValueError):
+            return False
+
+    if topic == 'ks114_sensor' and model == 'TW':
+        if not isinstance(data, dict):
+            return False
+
+        def has_content(value):
+            if value is None:
+                return False
+            if isinstance(value, str):
+                return value.strip() not in ('', '无数据', '未检测', '超时')
+            if isinstance(value, (list, tuple, dict)):
+                return bool(value)
+            return True
+
+        return all(
+            key in data and has_content(data[key])
+            for key in ('前超声', '后超声')
+        )
+
+    if topic == 'ks114_sensor' and model != 'HSR':
+        if not isinstance(data, (list, tuple)) or not data:
+            return False
+        try:
+            return all(float(value) > 2 for value in data)
+        except (TypeError, ValueError):
+            return False
+
+    if topic == 'microphone' and model == 'TW':
+        return data is True
+
+    return True
+
+
+def evaluate_sensor_items(model, sensor_results):
+    """按机型配置返回每个传感器子项及检测总结果。"""
+    sensor_results = sensor_results if isinstance(sensor_results, dict) else {}
+    current_config = model_config.get(model, model_config.get(DEFAULT_MODEL, {}))
+    sensor_topics = current_config.get('sensor', [])
+    item_results = {
+        topic: (
+            'success'
+            if _sensor_item_passed(topic, sensor_results.get(topic), model)
+            else 'failed'
+        )
+        for topic in sensor_topics
+    }
+    test_result = (
+        'success'
+        if item_results and all(status == 'success' for status in item_results.values())
+        else 'failed'
+    )
+    return item_results, test_result
+
+
+def _parse_ping_delay(value):
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        delay = float(value)
+    elif isinstance(value, str):
+        match = re.fullmatch(
+            r'\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*(?:ms)?\s*',
+            value,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            return None
+        delay = float(match.group(1))
+    else:
+        return None
+
+    if not math.isfinite(delay) or delay < 0:
+        return None
+    return delay
+
+
+def evaluate_ping_items(ping_results, ping_targets, max_delay_ms=100):
+    """返回每个 Ping 子项及总结果；超时、缺失或延迟超标均失败。"""
+    ping_results = ping_results if isinstance(ping_results, dict) else {}
+    item_results = {}
+    for target in ping_targets:
+        delay = _parse_ping_delay(ping_results.get(target))
+        item_results[target] = (
+            'success'
+            if delay is not None and delay <= max_delay_ms
+            else 'failed'
+        )
+
+    test_result = (
+        'success'
+        if item_results and all(status == 'success' for status in item_results.values())
+        else 'failed'
+    )
+    return item_results, test_result
+
+
+def get_effective_test_result(test_type, test_info, model):
+    """兼容旧记录：没有逐项状态时，根据已保存数据重新汇总三类检测。"""
+    if not isinstance(test_info, dict):
+        return 'pending'
+    if isinstance(test_info.get('item_results'), dict):
+        return test_info.get('result', 'pending')
+
+    if test_type == 'version':
+        _, test_result = evaluate_version_items(model, test_info)
+        return test_result
+    if test_type == 'sensor':
+        _, test_result = evaluate_sensor_items(model, test_info.get('data', {}))
+        return test_result
+    if test_type == 'ping':
+        current_config = model_config.get(model, model_config.get(DEFAULT_MODEL, {}))
+        _, test_result = evaluate_ping_items(
+            test_info.get('data', {}),
+            current_config.get('ping', []),
+        )
+        return test_result
+    return test_info.get('result', 'pending')
+
+
 def build_report_filters(data):
     """构建与前端展示一致的PDF筛选配置。"""
     if not isinstance(data, dict):
@@ -315,7 +514,11 @@ def main():
         
         for test_type in filtered_test_order:
             if test_type in results:
-                current_test_status[test_type] = results[test_type].get('result', 'pending')
+                current_test_status[test_type] = get_effective_test_result(
+                    test_type,
+                    results[test_type],
+                    current_model,
+                )
                 test_times[test_type] = results[test_type].get('time', '')
             else:
                 test_times[test_type] = ''
@@ -347,7 +550,11 @@ def test_page(test_type):
         
         for t_type in filtered_test_order:
             if t_type in results:
-                current_test_status[t_type] = results[t_type].get('result', 'pending')
+                current_test_status[t_type] = get_effective_test_result(
+                    t_type,
+                    results[t_type],
+                    current_model,
+                )
                 test_times[t_type] = results[t_type].get('time', '')
             else:
                 test_times[t_type] = ''
@@ -431,11 +638,16 @@ def get_test_status():
         return jsonify({'success': False, 'error': '未绑定IP'})
     
     results = read_result_file(bound_ip)
+    current_model = results.get('robot_info', {}).get('model')
     test_results = {}
     test_times = {}
     for test_type in test_order:
         if test_type in results:
-            test_results[test_type] = results[test_type].get('result', 'pending')
+            test_results[test_type] = get_effective_test_result(
+                test_type,
+                results[test_type],
+                current_model,
+            )
             test_times[test_type] = results[test_type].get('time', '')
         else:
             test_results[test_type] = 'pending'
@@ -482,21 +694,7 @@ def get_version_standards():
     if not model:
         return jsonify({'success': False, 'error': '未找到机型信息'})
     
-    standards = {}
-    
-    config_path = os.path.join('config', model, 'version_config.json')
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config_data = json.load(f)
-                # 复制配置文件中的所有字段，而不是只复制特定字段
-                for key, value in config_data.items():
-                    standards[key] = value
-        except Exception as e:
-            log.error(f"读取版本配置文件失败: {str(e)}")
-    
-    if not standards and model in version_standards:
-        standards = version_standards[model]
+    standards = get_version_standards_by_model(model)
     
     if not standards:
         return jsonify({'success': False, 'error': '未找到该机型的版本标准'})
@@ -510,7 +708,11 @@ def get_version_info():
         return jsonify({'success': False, 'error': '未绑定IP'})
     
     results = read_result_file(bound_ip)
-    version_info = results.get('version', {})
+    version_info = dict(results.get('version', {}))
+    if version_info and not isinstance(version_info.get('item_results'), dict):
+        current_model = results.get('robot_info', {}).get('model')
+        item_results, _ = evaluate_version_items(current_model, version_info)
+        version_info['item_results'] = item_results
     
     return jsonify({'success': True, 'version_info': version_info})
 
@@ -536,7 +738,14 @@ def get_sensor_info():
         return jsonify({'success': False, 'error': '未绑定IP'})
     
     results = read_result_file(bound_ip)
-    sensor_info = results.get('sensor', {})
+    sensor_info = dict(results.get('sensor', {}))
+    if sensor_info and not isinstance(sensor_info.get('item_results'), dict):
+        current_model = results.get('robot_info', {}).get('model')
+        item_results, _ = evaluate_sensor_items(
+            current_model,
+            sensor_info.get('data', {}),
+        )
+        sensor_info['item_results'] = item_results
     
     return jsonify({'success': True, 'sensor_info': sensor_info})
 
@@ -924,8 +1133,22 @@ def get_ping_info():
     
     results = read_result_file(bound_ip)
     ping_info = results.get('ping', {})
-    
-    return jsonify({'success': True, 'ping_info': ping_info.get('data', {}), 'test_time': ping_info.get('time', '')})
+    ping_results = ping_info.get('data', {})
+    current_model = results.get('robot_info', {}).get('model')
+    current_config = model_config.get(current_model, model_config.get(DEFAULT_MODEL, {}))
+    ping_targets = current_config.get('ping', [])
+    item_results = ping_info.get('item_results')
+    computed_result = ping_info.get('result')
+    if not isinstance(item_results, dict):
+        item_results, computed_result = evaluate_ping_items(ping_results, ping_targets)
+
+    return jsonify({
+        'success': True,
+        'ping_info': ping_results,
+        'item_results': item_results,
+        'result': computed_result,
+        'test_time': ping_info.get('time', ''),
+    })
 
 @app.route('/get_dynamic_info', methods=['GET'])
 def get_dynamic_info():
@@ -1210,26 +1433,11 @@ def start_test():
             needed_fields = get_version_fields_by_model(current_model)
             result = reader.read_fields(bound_ip, needed_fields)
             
-            # 自动比较版本值
-            test_result = 'success'
-            if current_model in version_standards:
-                standards = version_standards[current_model]
-                for field in needed_fields:
-                    if field in standards and field in result:
-                        standard_value = standards[field]
-                        if standard_value in (None, ''):
-                            continue
-                        actual_value = result[field]
-                        # 检查是否为错误信息
-                        if isinstance(actual_value, str) and (actual_value.startswith('❌') or actual_value.startswith('🚨') or actual_value.startswith('⚠️')):
-                            test_result = 'failed'
-                            break
-                        # 比较版本值
-                        if str(standard_value) != str(actual_value):
-                            test_result = 'failed'
-                            break
+            # 自动比较版本值，并保留每个子项的判定供前端展示。
+            item_results, test_result = evaluate_version_items(current_model, result)
             
             # 添加测试结果和时间
+            result['item_results'] = item_results
             result['result'] = test_result
             result['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
@@ -1262,79 +1470,16 @@ def start_test():
             current_model = robot_info.get('model')
             reader = RosTopicReader(bound_ip, model=current_model)
             sensor_results = reader.get_all_data()
-            
-            # 检查是否为NaN的辅助函数
-            def is_nan(value):
-                import math
-                try:
-                    return math.isnan(float(value))
-                except:
-                    return False
-            
-            # 获取当前机型配置的传感器列表
-            model_sensors = []
-            if current_model in model_config and 'sensor' in model_config[current_model]:
-                model_sensors = model_config[current_model]['sensor']
-            
-            # 传感器状态判断 - 只检查配置中指定的传感器
-            test_result = 'success'
-            for topic, data in sensor_results.items():
-                # 只检查配置中指定的传感器
-                if model_sensors and topic not in model_sensors:
-                    continue
-                    
-                if data is None or data == '无数据':
-                    test_result = 'failed'
-                    break
-                
-                # 检查数据中是否包含NaN
-                has_nan = False
-                if isinstance(data, list):
-                    for item in data:
-                        if is_nan(item):
-                            has_nan = True
-                            break
-                elif isinstance(data, dict):
-                    for key, value in data.items():
-                        if is_nan(value):
-                            has_nan = True
-                            break
-                else:
-                    if is_nan(data):
-                        has_nan = True
-                
-                if has_nan:
-                    test_result = 'failed'
-                    break
-                
-                # 对cpu_hz的特殊处理：HSR机型阈值为2400
-                if topic == 'cpu_hz' and isinstance(data, list):
-                    min_hz = 2400 if current_model == 'HSR' else 2400
-                    for hz in data:
-                        if hz < min_hz:
-                            test_result = 'failed'
-                            break
-                    if test_result == 'failed':
-                        break
-                # 对ks114_sensor的特殊处理：每个元素大于0才算成功（仅非HSR机型）
-                if topic == 'ks114_sensor' and isinstance(data, list) and current_model != 'HSR':
-                    for value in data:
-                        if value <= 2:
-                            test_result = 'failed'
-                            break
-                    if test_result == 'failed':
-                        break
-                # 对microphone的特殊处理：必须为True才算成功（仅TW机型）
-                if topic == 'microphone' and current_model == 'TW':
-                    if data is not True:
-                        test_result = 'failed'
-                        break
+
+            # 逐项判定，缺失的已配置传感器也必须视为失败。
+            item_results, test_result = evaluate_sensor_items(current_model, sensor_results)
             
             # 保存传感器检测结果
             results = read_result_file(bound_ip)
             results['sensor'] = {
                 'result': test_result,
                 'data': sensor_results,
+                'item_results': item_results,
                 'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             write_result_file(bound_ip, results)
@@ -1344,7 +1489,12 @@ def start_test():
             except Exception:
                 pass
 
-            return jsonify({'success': True, 'sensor_info': sensor_results, 'result': test_result})
+            return jsonify({
+                'success': True,
+                'sensor_info': sensor_results,
+                'item_results': item_results,
+                'result': test_result,
+            })
         except Exception as e:
             log.error(f"错误: {str(e)}")      
             import traceback
@@ -1396,9 +1546,10 @@ def start_test():
             
             # 根据机型选择不同的ping目标
             if current_model in model_config and 'ping' in model_config[current_model]:
-                ping_targets = model_config[current_model]['ping']
+                ping_targets = list(model_config[current_model]['ping'])
             else:
                 ping_targets = ["192.168.0.8", "192.168.2.63", "192.168.2.250", "192.168.0.100", "192.168.2.2", "192.168.0.100:8081"]
+            configured_ping_targets = list(ping_targets)
             
             # HSR机型：Compass接口(192.168.0.100:8081)不需要实际测试，直接返回固定的0.1ms
             compass_target = "192.168.0.100:8081"
@@ -1417,38 +1568,18 @@ def start_test():
             for target in skip_targets:
                 ping_results[target] = "0.100 ms"
             
-            # Ping标准值（只要小于这些值就行，因为延迟越小越好）
-            ping_standard = {}
-            for ip in ping_targets:
-                ping_standard[ip] = "100 ms"
-            
-            # 为跳过的目标也添加标准值
-            for target in skip_targets:
-                ping_standard[target] = "100 ms"
-            
-            # 自动比较Ping值
-            test_result = 'success'
-            for ip, standard_value in ping_standard.items():
-                if ip in ping_results:
-                    actual_value = ping_results[ip]
-                    if actual_value:
-                        # 提取数值部分
-                        try:
-                            standard_num = float(standard_value.replace(' ms', ''))
-                            actual_num = float(actual_value.replace(' ms', ''))
-                            if actual_num > standard_num:
-                                test_result = 'failed'
-                                break
-                        except ValueError:
-                            test_result = 'failed'
-                            break
-                    # 如果结果是null，算成功
+            # 自动比较 Ping 值；超时(None)、缺失、格式异常或超过100ms均失败。
+            item_results, test_result = evaluate_ping_items(
+                ping_results,
+                configured_ping_targets,
+            )
             
             # 保存Ping测试结果
             results = read_result_file(bound_ip)
             results['ping'] = {
                 'result': test_result,
                 'data': ping_results,
+                'item_results': item_results,
                 'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
             write_result_file(bound_ip, results)
@@ -1458,7 +1589,12 @@ def start_test():
             except Exception:
                 pass
 
-            return jsonify({'success': True, 'ping_info': ping_results, 'result': test_result})
+            return jsonify({
+                'success': True,
+                'ping_info': ping_results,
+                'item_results': item_results,
+                'result': test_result,
+            })
         except Exception as e:
             log.error(f"错误: {str(e)}")      
             import traceback
@@ -1534,6 +1670,8 @@ def start_test():
                     if stop_event_local.is_set():
                         return
                     task_results = inspector.run_tasks(stop_event=stop_event_local)
+                    if stop_event_local.is_set():
+                        return
 
                     with dynamic_worker_lock:
                         active_worker = dynamic_workers.get(bound_ip)
@@ -1567,10 +1705,19 @@ def start_test():
                     except Exception:
                         pass
                 except Exception as e:
-                    inspector.save_task_status(None, current_step="动态测试异常", step_status="failed", error=str(e), result="failed")
-                    log.error(f"错误: {str(e)}")      
-                    import traceback
-                    log.error(f"堆栈: {traceback.format_exc()}")
+                    if stop_event_local.is_set():
+                        inspector.save_task_status(
+                            None,
+                            current_step="动态测试已停止",
+                            step_status="stopped",
+                            error="",
+                            result="pending",
+                        )
+                    else:
+                        inspector.save_task_status(None, current_step="动态测试异常", step_status="failed", error=str(e), result="failed")
+                        log.error(f"错误: {str(e)}")
+                        import traceback
+                        log.error(f"堆栈: {traceback.format_exc()}")
                 finally:
                     with dynamic_worker_lock:
                         active_worker = dynamic_workers.get(bound_ip)
@@ -1754,6 +1901,86 @@ def start_test():
     
     # 其他测试类型的处理
     return jsonify({'success': True})
+
+
+@app.route('/stop_dynamic_test', methods=['POST'])
+def stop_dynamic_test():
+    bound_ip = session.get('bound_ip')
+    if not bound_ip:
+        return jsonify({'success': False, 'error': '请先绑定IP地址'})
+
+    worker = None
+    with dynamic_worker_lock:
+        worker = dynamic_workers.get(bound_ip)
+        if worker:
+            worker['stop_event'].set()
+
+    stop_error = None
+    try:
+        from script.compass_request import stop_all_tasks
+
+        response = stop_all_tasks(bound_ip)
+        if not response.ok:
+            response_text = (response.text or '').strip()
+            detail = f"，响应：{response_text[:200]}" if response_text else ''
+            stop_error = f"停止全部机器人任务失败（HTTP {response.status_code}）{detail}"
+    except Exception as e:
+        stop_error = f"停止全部机器人任务请求失败：{e}"
+
+    if worker:
+        worker_thread = worker.get('thread')
+        if worker_thread and worker_thread.is_alive():
+            worker_thread.join(timeout=2)
+        with dynamic_worker_lock:
+            active_worker = dynamic_workers.get(bound_ip)
+            if active_worker and active_worker.get('run_id') == worker.get('run_id'):
+                dynamic_workers.pop(bound_ip, None)
+
+    with lidar_reader_lock:
+        reader = lidar_readers.pop(bound_ip, None)
+    if reader:
+        try:
+            reader.stop()
+        except Exception as e:
+            log.error(f"停止动态测试区域数据采集失败，IP={bound_ip}: {e}")
+
+    try:
+        inspector = dynamic_inspectors.get(bound_ip)
+        if not inspector:
+            from script.dynamic import InspectionAutomation
+
+            results = read_result_file(bound_ip)
+            current_model = results.get('robot_info', {}).get('model') or DEFAULT_MODEL
+            inspector = InspectionAutomation(bound_ip, current_model, auto_initialize=False)
+            dynamic_inspectors[bound_ip] = inspector
+
+        inspector.save_task_status(
+            None,
+            current_step="动态测试已停止" if not stop_error else "动态测试已停止，但机器人任务停止请求失败",
+            step_status="stopped",
+            error=stop_error or "",
+            result="pending",
+        )
+    except Exception as e:
+        log.error(f"保存动态测试停止状态失败，IP={bound_ip}: {e}")
+
+    if stop_error:
+        log.error(f"停止动态测试失败，IP={bound_ip}: {stop_error}")
+        return jsonify({
+            'success': False,
+            'local_stopped': True,
+            'error': stop_error,
+            'current_step': '动态测试已停止，但机器人任务停止请求失败',
+            'step_status': 'stopped',
+        })
+
+    return jsonify({
+        'success': True,
+        'message': '动态测试及机器人全部任务已停止',
+        'current_step': '动态测试已停止',
+        'step_status': 'stopped',
+    })
+
 
 @app.route('/end_test', methods=['POST'])
 def end_test():

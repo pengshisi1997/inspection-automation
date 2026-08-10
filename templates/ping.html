@@ -38,7 +38,8 @@
         margin-bottom: 10px;
         display: flex;
         justify-content: space-between;
-        padding: 5px 0;
+        padding: 7px 8px;
+        border-left: 4px solid transparent;
         border-bottom: 1px solid #eee;
     }
     .sensor-item:last-child {
@@ -50,6 +51,15 @@
     }
     .sensor-status {
         color: #666;
+    }
+    .sensor-item.is-failed {
+        border-left-color: #dc3545;
+        background-color: #fff1f0;
+    }
+    .sensor-item.is-failed .sensor-name,
+    .sensor-item.is-failed .sensor-status {
+        color: #c62828;
+        font-weight: 600;
     }
     .test-time {
         margin-top: 20px;
@@ -74,7 +84,7 @@
         .then(data => {
             hideLoading();
             if (data.success && data.ping_info) {
-                updatePingInfo(data.ping_info);
+                updatePingInfo(data.ping_info, data.item_results);
                 // 更新左边栏测试状态
                 if (data.result) {
                     updateTestStatus(testType, data.result);
@@ -94,7 +104,7 @@
         });
     }
     
-    function updatePingInfo(pingInfo) {
+    function updatePingInfo(pingInfo, itemResults) {
         console.log('Ping测试结果:', pingInfo);
         
         const sensorItems = document.querySelectorAll('.sensor-item');
@@ -102,7 +112,20 @@
             const ip = item.dataset.ip;
             const statusElement = item.querySelector('.sensor-status');
             if (!ip) return;
-            statusElement.textContent = ip in pingInfo ? (pingInfo[ip] || '超时') : '未检测';
+            const hasResult = ip in pingInfo;
+            const value = hasResult ? pingInfo[ip] : null;
+            statusElement.textContent = hasResult ? (value || '超时') : '未检测';
+
+            const serverStatus = itemResults && itemResults[ip];
+            const numericDelay = typeof value === 'string'
+                ? Number(value.replace(/ms$/i, '').trim())
+                : Number(value);
+            const inferredFailure = hasResult
+                && (value === null || value === '' || !Number.isFinite(numericDelay) || numericDelay > 100);
+            item.classList.toggle(
+                'is-failed',
+                serverStatus === 'failed' || (!serverStatus && inferredFailure)
+            );
         });
     }
     
@@ -136,7 +159,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.success && data.ping_info) {
-                updatePingInfo(data.ping_info);
+                updatePingInfo(data.ping_info, data.item_results);
                 // 显示测试时间
                 const testTimeElement = document.getElementById('test-time');
                 if (testTimeElement && data.test_time) {

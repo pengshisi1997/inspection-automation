@@ -585,9 +585,9 @@ def upload_task(
 
 
 # 停止所有控制
-def stop_all_tasks(ip):
+def stop_all_tasks(ip, timeout=10):
     url = f"http://{ip}:8080/api/v3/missionWorks/all/controls/stop"
-    return requests.post(url)
+    return requests.post(url, timeout=timeout)
 
 
 if __name__ == "__main__":

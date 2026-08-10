@@ -96,7 +96,7 @@ VERSION_ITEMS = {
 
 VERSION_STANDARDS = {
     'MS': {
-        "pilot_version": "release/v3.8.0_xjyw_v1.5.21_260616.1",
+        "pilot_version": "release/v3.8.0_xjyw_v1.5.21_20260313",
         "compass_version": "YOUICompassSetup-4.7.4-xjyw-V4.2.0-20260427",
         "rcc_base_version": "2.01",
         "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
@@ -120,7 +120,7 @@ VERSION_STANDARDS = {
         "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
     },
     'TW': {
-        "pilot_version": "release_v4.0.8_xjyw.260528.1-x86_64-running",
+        "pilot_version": "release_v4.0.8_xjyw.260725.1-x86_64-running",
         "rcc_base_version": "2.02",
         "robot_version": "robot-v1.3.0.1_2.100_202606121820",
         "rws_version": "v2.0.2",
