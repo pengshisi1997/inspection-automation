@@ -1,0 +1,6 @@
+id,mission_name,type,device_list,device_level,priority,record_time,create_time,update_time
+2087369520622170114,直线,1,"zhixianzhongdian,zhixianqidian",2,2,0,2026-08-12 10:44:09,2026-08-12 10:44:09
+2087369568386904065,曲线,1,"quxianzhongdian,zhixianqidian",2,2,0,2026-08-12 10:44:21,2026-08-12 10:44:21
+2087369627216211970,沟壑,1,"gouhezhongdian,qidian",2,2,0,2026-08-12 10:44:35,2026-08-12 10:44:35
+2087823360446771201,切区,1,"quyuzhongdian,zhixianqidian",2,2,0,2026-08-13 16:47:33,2026-08-13 16:47:33
+2089241270201430018,云台,1,yuntaidian,2,2,0,2026-08-17 14:41:49,2026-08-17 14:41:49

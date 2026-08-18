@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLB 3D 模型查看器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+  }
+
+  /* 顶部工具栏 */
+  #toolbar {
+    position: fixed;
+    top: 16px; left: 16px; right: 16px;
+    display: flex; align-items: center; gap: 12px;
+    z-index: 10;
+    pointer-events: none;
+  }
+  #toolbar > * { pointer-events: auto; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px;
+    background: rgba(46, 52, 72, 0.92);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #eee; font-size: 14px; cursor: pointer;
+    transition: all .15s ease;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    user-select: none;
+  }
+  .btn:hover { background: rgba(66, 76, 102, 0.95); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn svg { width: 18px; height: 18px; }
+
+  #fileName {
+    font-size: 13px; color: #aab;
+    padding: 8px 14px;
+    background: rgba(46, 52, 72, 0.7);
+    border-radius: 10px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    max-width: 40vw;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    display: none;
+  }
+
+  #info {
+    margin-left: auto;
+    font-size: 12px; color: #889;
+    padding: 8px 14px;
+    background: rgba(46, 52, 72, 0.6);
+    border-radius: 10px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: none;
+  }
+
+  /* 拖拽提示 */
+  #dropZone {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 5;
+    transition: all .2s ease;
+  }
+  #dropZone .card {
+    text-align: center;
+    padding: 48px 64px;
+    border: 2px dashed rgba(120, 140, 200, 0.35);
+    border-radius: 20px;
+    background: rgba(30, 34, 54, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: all .2s ease;
+  }
+  #dropZone.dragover .card {
+    border-color: #5b9dff;
+    background: rgba(60, 90, 160, 0.35);
+    transform: scale(1.03);
+  }
+  #dropZone .icon {
+    width: 72px; height: 72px; margin: 0 auto 20px;
+    opacity: .8;
+  }
+  #dropZone h2 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  #dropZone p { font-size: 14px; color: #889; line-height: 1.6; }
+  #dropZone .hint { margin-top: 18px; font-size: 12px; color: #667; }
+
+  /* 加载进度 */
+  #loader {
+    position: fixed; inset: 0;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(10, 12, 24, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 20;
+  }
+  #loader .box { text-align: center; }
+  #loader .ring {
+    width: 56px; height: 56px;
+    border: 4px solid rgba(255,255,255,0.15);
+    border-top-color: #5b9dff;
+    border-radius: 50%;
+    margin: 0 auto 18px;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loader .text { font-size: 14px; color: #ccd; }
+  #loader .pct { font-size: 12px; color: #889; margin-top: 6px; }
+
+  /* 画布 */
+  #canvas { display: block; width: 100%; height: 100%; }
+
+  /* 右下角控制提示 */
+  #controls-hint {
+    position: fixed;
+    bottom: 16px; right: 16px;
+    font-size: 12px; color: #889;
+    padding: 10px 14px;
+    background: rgba(46, 52, 72, 0.7);
+    border-radius: 10px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    line-height: 1.8;
+    display: none;
+  }
+  #controls-hint b { color: #bbc; font-weight: 600; }
+
+  /* 左下角设置面板 */
+  #panel {
+    position: fixed;
+    bottom: 16px; left: 16px;
+    width: 220px;
+    padding: 14px 16px;
+    background: rgba(30, 34, 54, 0.85);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 10;
+    display: none;
+    font-size: 13px;
+  }
+  #panel h3 {
+    font-size: 13px; font-weight: 600; margin-bottom: 12px; color: #ccd;
+  }
+  #panel .row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  #panel .row:last-child { margin-bottom: 0; }
+  #panel label { color: #aab; }
+  #panel input[type="range"] {
+    width: 110px;
+    accent-color: #5b9dff;
+  }
+  #panel input[type="checkbox"] { accent-color: #5b9dff; }
+  #panel .divider {
+    height: 1px; background: rgba(255,255,255,0.08);
+    margin: 10px 0;
+  }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <label class="btn" for="fileInput">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    选择 GLB 文件
+  </label>
+  <input type="file" id="fileInput" accept=".glb,.gltf" style="display:none">
+  <div id="fileName"></div>
+  <div id="info"></div>
+</div>
+
+<div id="dropZone">
+  <div class="card">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#7c8db5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+      <line x1="12" y1="22.08" x2="12" y2="12"/>
+    </svg>
+    <h2>选择或拖入 GLB / GLTF 文件</h2>
+    <p>支持本地 3D 模型文件预览<br>鼠标拖拽旋转 · 滚轮缩放 · 右键平移</p>
+    <div class="hint">所有文件仅在本地浏览器中解析，不会上传</div>
+  </div>
+</div>
+
+<div id="loader">
+  <div class="box">
+    <div class="ring"></div>
+    <div class="text" id="loaderText">加载中...</div>
+    <div class="pct" id="loaderPct"></div>
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div id="panel">
+  <h3>显示设置</h3>
+  <div class="row">
+    <label>环境光</label>
+    <input type="range" id="ambientSlider" min="0" max="3" step="0.1" value="1.2">
+  </div>
+  <div class="row">
+    <label>主光</label>
+    <input type="range" id="dirSlider" min="0" max="5" step="0.1" value="2.5">
+  </div>
+  <div class="row">
+    <label>地面网格</label>
+    <input type="checkbox" id="gridToggle" checked>
+  </div>
+  <div class="row">
+    <label>自动旋转</label>
+    <input type="checkbox" id="autoRotate">
+  </div>
+  <div class="divider"></div>
+  <div class="row">
+    <label>背景</label>
+    <input type="color" id="bgColor" value="#1a1a2e" style="width:36px;height:24px;border:none;background:none;cursor:pointer;">
+  </div>
+  <div class="row">
+    <label>重置视角</label>
+    <button class="btn" id="resetView" style="padding:4px 10px;font-size:12px;">重置</button>
+  </div>
+</div>
+
+<div id="controls-hint">
+  <b>左键拖拽</b> 旋转视角<br>
+  <b>右键拖拽</b> 平移<br>
+  <b>滚轮</b> 缩放
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+
+// ===== 基础场景 =====
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 2000);
+camera.position.set(4, 3, 6);
+
+// ===== 灯光 =====
+const ambient = new THREE.AmbientLight(0xffffff, 1.2);
+scene.add(ambient);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
+dirLight.position.set(5, 10, 7);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.near = 0.5;
+dirLight.shadow.camera.far = 50;
+dirLight.shadow.camera.left = -10;
+dirLight.shadow.camera.right = 10;
+dirLight.shadow.camera.top = 10;
+dirLight.shadow.camera.bottom = -10;
+dirLight.shadow.bias = -0.0005;
+scene.add(dirLight);
+
+const fillLight = new THREE.DirectionalLight(0xb0c4ff, 0.8);
+fillLight.position.set(-5, 4, -5);
+scene.add(fillLight);
+
+// 半球光增加自然感
+const hemi = new THREE.HemisphereLight(0xffffff, 0x444466, 0.6);
+scene.add(hemi);
+
+// ===== 地面网格 + 阴影承接面 =====
+const gridHelper = new THREE.GridHelper(40, 40, 0x4a5070, 0x2a2e44);
+gridHelper.material.transparent = true;
+gridHelper.material.opacity = 0.5;
+scene.add(gridHelper);
+
+const shadowGround = new THREE.Mesh(
+  new THREE.PlaneGeometry(100, 100),
+  new THREE.ShadowMaterial({ opacity: 0.35 })
+);
+shadowGround.rotation.x = -Math.PI / 2;
+shadowGround.receiveShadow = true;
+scene.add(shadowGround);
+
+// ===== 控制器 =====
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 0.1;
+controls.maxDistance = 500;
+
+// ===== 当前模型引用 =====
+let currentModel = null;
+let modelBBox = null;
+
+// 加载器 —— 配上 DRACO / KTX2 / Meshopt 解码器
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/');
+dracoLoader.setDecoderConfig({ type: 'js' });
+
+const ktx2Loader = new KTX2Loader();
+ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/basis/');
+ktx2Loader.detectSupport(renderer);
+
+const loader = new GLTFLoader();
+loader.setDRACOLoader(dracoLoader);
+loader.setKTX2Loader(ktx2Loader);
+loader.setMeshoptDecoder(MeshoptDecoder);
+
+// ===== 文件加载 =====
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+const loaderEl = document.getElementById('loader');
+const loaderText = document.getElementById('loaderText');
+const loaderPct = document.getElementById('loaderPct');
+const fileNameEl = document.getElementById('fileName');
+const infoEl = document.getElementById('info');
+const panelEl = document.getElementById('panel');
+const hintEl = document.getElementById('controls-hint');
+
+function loadFile(file) {
+  if (!file) return;
+  const isGLB = file.name.toLowerCase().endsWith('.glb');
+  const isGLTF = file.name.toLowerCase().endsWith('.gltf');
+  if (!isGLB && !isGLTF) {
+    alert('请选择 .glb 或 .gltf 文件');
+    return;
+  }
+
+  loaderEl.style.display = 'flex';
+  loaderText.textContent = '正在解析模型...';
+  loaderPct.textContent = '';
+  dropZone.style.display = 'none';
+  fileNameEl.textContent = file.name;
+  fileNameEl.style.display = 'block';
+  panelEl.style.display = 'block';
+  hintEl.style.display = 'block';
+  infoEl.style.display = 'none';
+
+  const reader = new FileReader();
+
+  reader.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      loaderPct.textContent = pct + '%';
+    }
+  };
+
+  reader.onload = (e) => {
+    const data = e.target.result;
+    const url = URL.createObjectURL(new Blob([data]));
+    loaderText.textContent = '正在渲染模型...';
+
+    loader.load(
+      url,
+      (gltf) => {
+        URL.revokeObjectURL(url);
+        onModelLoaded(gltf, file.name);
+      },
+      (xhr) => {
+        if (xhr.lengthComputable) {
+          const pct = Math.round((xhr.loaded / xhr.total) * 100);
+          loaderPct.textContent = pct + '%';
+        }
+      },
+      (err) => {
+        console.error(err);
+        URL.revokeObjectURL(url);
+        loaderEl.style.display = 'none';
+        alert('模型加载失败：' + (err?.message || '未知错误'));
+        dropZone.style.display = 'flex';
+      }
+    );
+  };
+
+  reader.onerror = () => {
+    loaderEl.style.display = 'none';
+    alert('文件读取失败');
+    dropZone.style.display = 'flex';
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+function onModelLoaded(gltf, name) {
+  // 清除旧模型
+  if (currentModel) {
+    scene.remove(currentModel);
+    disposeObject(currentModel);
+  }
+
+  const model = gltf.scene;
+  currentModel = model;
+
+  // 启用阴影 & 统计
+  let meshCount = 0, triCount = 0, matSet = new Set();
+  model.traverse((node) => {
+    if (node.isMesh) {
+      node.castShadow = true;
+      node.receiveShadow = true;
+      meshCount++;
+      const geo = node.geometry;
+      if (geo && geo.index) triCount += geo.index.count / 3;
+      else if (geo && geo.attributes.position) triCount += geo.attributes.position.count / 3;
+      if (node.material) {
+        (Array.isArray(node.material) ? node.material : [node.material]).forEach(m => matSet.add(m));
+      }
+    }
+  });
+
+  scene.add(model);
+
+  // 自适应相机
+  fitCameraToModel(model);
+
+  loaderEl.style.display = 'none';
+
+  // 显示信息
+  const sizeMB = (modelSizeOf(currentModel)).toFixed(2);
+  infoEl.innerHTML = `网格: <b style="color:#5b9dff">${meshCount}</b> · 三角面: <b style="color:#5b9dff">${Math.round(triCount).toLocaleString()}</b>`;
+  infoEl.style.display = 'block';
+}
+
+function modelSizeOf(obj) {
+  let bytes = 0;
+  obj.traverse((n) => {
+    if (n.geometry) {
+      n.geometry.attributes && Object.values(n.geometry.attributes).forEach(a => {
+        if (a && a.array) bytes += a.array.byteLength;
+      });
+      if (n.geometry.index && n.geometry.index.array) bytes += n.geometry.index.array.byteLength;
+    }
+  });
+  return bytes / (1024 * 1024);
+}
+
+function fitCameraToModel(object) {
+  // 计算包围盒
+  const box = new THREE.Box3().setFromObject(object);
+  modelBBox = box;
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+
+  // 处理空模型
+  if (size.length() === 0) {
+    console.warn('模型尺寸为 0');
+    return;
+  }
+
+  // 把模型移到原点（仅用于视角，不改变模型本身）
+  // 这里通过设置 controls.target 实现看向中心
+  controls.target.copy(center);
+
+  // 根据包围盒计算合适的相机距离
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const fov = camera.fov * Math.PI / 180;
+  let distance = maxDim / (2 * Math.tan(fov / 2));
+  distance *= 1.8; // 留一点边距
+
+  // 相机方向：从斜上方看
+  const dir = new THREE.Vector3(1, 0.8, 1.2).normalize();
+  camera.position.copy(center).add(dir.multiplyScalar(distance));
+  camera.near = Math.max(distance / 1000, 0.001);
+  camera.far = distance * 100;
+  camera.updateProjectionMatrix();
+
+  controls.minDistance = maxDim * 0.05;
+  controls.maxDistance = maxDim * 20;
+  controls.update();
+
+  // 调整地面位置到模型底部
+  const groundY = box.min.y;
+  gridHelper.position.y = groundY;
+  shadowGround.position.y = groundY + 0.001;
+
+  // 调整阴影相机
+  const shadowSize = maxDim * 2;
+  dirLight.shadow.camera.left = -shadowSize;
+  dirLight.shadow.camera.right = shadowSize;
+  dirLight.shadow.camera.top = shadowSize;
+  dirLight.shadow.camera.bottom = -shadowSize;
+  dirLight.shadow.camera.near = 0.1;
+  dirLight.shadow.camera.far = distance * 4;
+  dirLight.position.set(center.x + maxDim, box.max.y + maxDim * 2, center.z + maxDim);
+  dirLight.target.position.copy(center);
+  dirLight.target.updateMatrixWorld();
+  dirLight.shadow.camera.updateProjectionMatrix();
+}
+
+function disposeObject(obj) {
+  obj.traverse((node) => {
+    if (node.geometry) node.geometry.dispose();
+    if (node.material) {
+      (Array.isArray(node.material) ? node.material : [node.material]).forEach(m => {
+        Object.values(m).forEach(v => { if (v && v.isTexture) v.dispose(); });
+        m.dispose();
+      });
+    }
+  });
+}
+
+fileInput.addEventListener('change', (e) => {
+  loadFile(e.target.files[0]);
+  e.target.value = ''; // 允许重复选择同一文件
+});
+
+// ===== 拖拽 =====
+['dragenter', 'dragover'].forEach(ev => {
+  window.addEventListener(ev, (e) => {
+    e.preventDefault();
+    dropZone.style.display = 'flex';
+    dropZone.classList.add('dragover');
+  });
+});
+['dragleave', 'drop'].forEach(ev => {
+  window.addEventListener(ev, (e) => {
+    e.preventDefault();
+    if (ev === 'dragleave' && e.relatedTarget) return;
+    dropZone.classList.remove('dragover');
+    if (currentModel && ev === 'dragleave') dropZone.style.display = 'none';
+  });
+});
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+  else if (currentModel) dropZone.style.display = 'none';
+});
+
+// ===== 设置面板 =====
+document.getElementById('ambientSlider').addEventListener('input', (e) => {
+  ambient.intensity = parseFloat(e.target.value);
+});
+document.getElementById('dirSlider').addEventListener('input', (e) => {
+  dirLight.intensity = parseFloat(e.target.value);
+});
+document.getElementById('gridToggle').addEventListener('change', (e) => {
+  gridHelper.visible = e.target.checked;
+});
+document.getElementById('autoRotate').addEventListener('change', (e) => {
+  controls.autoRotate = e.target.checked;
+  controls.autoRotateSpeed = 1.5;
+});
+document.getElementById('bgColor').addEventListener('input', (e) => {
+  scene.background = new THREE.Color(e.target.value);
+});
+document.getElementById('resetView').addEventListener('click', () => {
+  if (currentModel) fitCameraToModel(currentModel);
+});
+
+// ===== 渲染循环 =====
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// ===== 窗口缩放 =====
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

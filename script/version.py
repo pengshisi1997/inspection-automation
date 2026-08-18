@@ -462,7 +462,7 @@ class MirrorSystemReader:
             return f"🚨 SSH连接失败: {exc}"
 
     def get_pilot_version(self, ip):
-        if self.model == "TW":
+        if self.model in ("TW", "EX"):
             return self.get_pilot_version_tw(ip)
         if self.model == "MR":
             return self._find_keyword_entry(
@@ -604,8 +604,8 @@ class MirrorSystemReader:
     def get_rcc_base_version(self, ip):
         try:
             reader = Rcc_base(username=self.username, password=self.password)
-            if self.model == "TW":
-                # TW机型：先发送 AT+SetDebugPort=1，再发送 AT+ReadVersion
+            if self.model in ("TW", "EX"):
+                # TW/EX机型：先发送 AT+SetDebugPort=1，再发送 AT+ReadVersion
                 return reader.execute_multiple_commands(ip, ["AT+SetDebugPort=1", "AT+ReadVersion"])
             else:
                 # 其他机型：直接发送 AT+ReadVersion
@@ -651,7 +651,7 @@ class MirrorSystemReader:
                 prefer_non_zip=True,
                 missing_message="⚠️ 未检测到 YOUIRWS 版本文件，需人工处理",
             )
-        if self.model == "TW":
+        if self.model in ("TW", "EX"):
             try:
                 output, error = self._run_command(
                     ip,

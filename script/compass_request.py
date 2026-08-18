@@ -338,13 +338,18 @@ def sync_vehicle_map(ip: str, map_id: str):
 
     payload = {"agvMapId": map_id}
 
-    response = requests.post(
-        url,
-        json=payload,
-        timeout=10
-    )
-
-    response.raise_for_status()
+    try:
+        response = requests.post(
+            url,
+            json=payload,
+            timeout=10
+        )
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        if e.response is not None and e.response.status_code == 404:
+            print(f"[{ip}] 同步地图接口不存在（404），跳过同步步骤")
+            return {"success": True, "skipped": True}
+        raise
 
     # 有些同步接口不返回 JSON
     if not response.text.strip():
@@ -358,7 +363,7 @@ def sync_vehicle_map(ip: str, map_id: str):
             "raw_response": response.text
         }
 
-# 切换手自动模式
+# 自动重定位
 def auto_relocation(ip: str):
     url = f"http://{ip}:8080/api/v3/vehicles/maps/relocation/auto"
     headers = {"Content-Type": "application/json"}
@@ -368,7 +373,9 @@ def auto_relocation(ip: str):
         print(f"响应内容: {response.text}")
     except Exception:
         # 忽略请求失败（超时或其他网络错误）
-        print(f"[{ip}] 切换到自动模式失败，可能是网络问题")
+        print(f"[{ip}] 自动重定位失败，可能是网络问题")
+    else:
+        time.sleep(2)
 
 # 手动重定位
 def manual_relocation(
@@ -392,13 +399,16 @@ def manual_relocation(
         "init_angle": init_angle,
     }
 
-    resp = requests.post(url, json=payload, timeout=timeout)
-
-    # 非 2xx 直接抛异常
-    resp.raise_for_status()
-    time.sleep(2)
-
-    auto_relocation(ip)
+    try:
+        resp = requests.post(url, json=payload, timeout=timeout)
+        resp.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        if e.response is not None and e.response.status_code == 404:
+            print(f"[{ip}] 手动重定位接口不存在（404），跳过手动重定位")
+        else:
+            raise
+    else:
+        time.sleep(2)
 
 # 启动任务
 def start_mission(ip: str, mission_id: str, timeout: int = 10):
@@ -439,17 +449,42 @@ def start_mission(ip: str, mission_id: str, timeout: int = 10):
 
 
 
+# 机型对应的数据库名和表名
+_MODEL_DB_CONFIG = {
+    'EX': {
+        'database': 'robot_system',
+        'tables': [
+            'checkpoint', 'checkpoint_action', 'checkpoint_action_parameter',
+            'checkpoint_action_record', 'mission', 'mission_model', 'path', 'side_path'
+        ],
+    },
+    'default': {
+        'database': 'youicompass',
+        'tables': [
+            'mission', 'mission_action', 'mission_work',
+            'mission_work_action', 'mission_action_parameter'
+        ],
+    },
+}
+
+
+def _get_db_config(model_type):
+    """根据机型获取数据库配置"""
+    return _MODEL_DB_CONFIG.get(model_type, _MODEL_DB_CONFIG['default'])
+
+
 # 上传任务
 def upload_task(
     ip: str,
     mission_dir: str = "mission",
+    model_type: str = None,
     progress_callback=None,
     lookup_batch_size: int = 2000,
     insert_batch_size: int = 1000,
 ):
     """
     该函数用于将当前路径中的 CSV 文件数据批量导入到 MySQL 数据库对应的表中。
-    涉及的表包括 'mission'、'mission_action'、'mission_work'、'mission_work_action'。
+    根据 model_type 自动选择数据库和表（EX 机型使用 robot_system，其他使用 youicompass）。
 
     为避免每次动态测试都重复传输全部任务数据，会先按主键查询机器人中已存在
     的记录，只上传缺失行。progress_callback 用于向前端报告分表进度。
@@ -458,16 +493,18 @@ def upload_task(
         if progress_callback:
             progress_callback(message)
 
+    db_config = _get_db_config(model_type)
+
     # 目标数据库连接信息
     connection = mysql.connector.connect(
         host=ip,
         user='root',
         password='root',
-        database='youicompass'
+        database=db_config['database']
     )
 
     # 表名列表
-    tables = ['mission', 'mission_action', 'mission_work', 'mission_work_action', 'mission_action_parameter']
+    tables = db_config['tables']
 
     cursor = None
     summary = {}

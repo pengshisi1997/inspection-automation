@@ -10,6 +10,7 @@ import requests
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import compass_request
+import robot_request
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_MODEL = "MS"
@@ -65,18 +66,21 @@ class InspectionAutomation:
 
     def initialize(self, stop_event=None):
         """初始化操作，执行用户指定的代码"""
-        map_file = self._resolve_model_file("map", "自动化测试.json")
+        map_filename = "zidonghuaceshi.zip" if self.jixing == "EX" else "自动化测试.json"
+        map_file = self._resolve_model_file("map", map_filename)
         mission_dir = self._resolve_mission_dir()
         map_params = {
             "MS": "6e53131d-15fa-11f1-98fd-0242ac110002",
             "MR": "91b7a2a8-4f61-11f1-8ba3-0242ac110003",
-            "HSR": "7640a72f-53e5-11f1-9b5e-0242ac110002"
+            "HSR": "7640a72f-53e5-11f1-9b5e-0242ac110002",
+            "EX": "zidonghuaceshi",
         }
         map_id = map_params.get(self.jixing, map_params["MS"])
         relocation_params = {
             "MS": (22.08, 5.83, 1.51),
             "MR": (5.9, 15.3, 6.5),
-            "HSR": (34.4, 14.9, 3.1)
+            "HSR": (34.4, 14.9, 3.1),
+            "EX": (25.934378954290512, 45.22651488167675, -0.060532019782105984),
         }
         init_x, init_y, init_angle = relocation_params.get(self.jixing, relocation_params["MS"])
 
@@ -89,57 +93,60 @@ class InspectionAutomation:
                 error="",
             )
 
-        steps = [
-            ("切换手动模式", lambda: compass_request.set_mode(self.ip, "manualMode")),
-            ("导入地图", lambda: compass_request.import_map_data(self.ip, map_file, model=self.jixing)),
-            (
-                "上传任务",
-                lambda: compass_request.upload_task(
-                    self.ip,
-                    mission_dir=mission_dir,
-                    progress_callback=report_task_upload_progress,
+        if self.jixing == "EX":
+            steps = [
+                ("切换手动模式", lambda: robot_request.set_manual_mode(self.ip)),
+                ("导入地图", lambda: robot_request.upload_agv_map(self.ip, map_file)),
+                (
+                    "上传任务",
+                    lambda: compass_request.upload_task(
+                        self.ip,
+                        mission_dir=mission_dir,
+                        model_type=self.jixing,
+                        progress_callback=report_task_upload_progress,
+                    ),
                 ),
-            ),
-            ("启用地图", lambda: compass_request.set_map(self.ip, "enable", map_id)),
-            ("同步车辆地图", lambda: compass_request.sync_vehicle_map(self.ip, map_id)),
-            ("手动重定位", lambda: compass_request.manual_relocation(ip=self.ip, init_x=init_x, init_y=init_y, init_angle=init_angle)),
-            ("切换自动模式", lambda: compass_request.set_mode(self.ip, "autoMode"))
-        ]
+                ("启用地图", lambda: robot_request.set_current_map(self.ip, map_id)),
+                ("手动重定位", lambda: robot_request.manual_relocation(
+                    ip=self.ip,
+                    init_x=init_x, init_y=init_y, init_angle=init_angle,
+                )),
+                ("自动重定位", lambda: compass_request.auto_relocation(self.ip)),
+                ("切换自动模式", lambda: robot_request.set_auto_mode(self.ip)),
+            ]
+        else:
+            steps = [
+                ("切换手动模式", lambda: compass_request.set_mode(self.ip, "manualMode")),
+                ("导入地图", lambda: compass_request.import_map_data(self.ip, map_file, model=self.jixing)),
+                (
+                    "上传任务",
+                    lambda: compass_request.upload_task(
+                        self.ip,
+                        mission_dir=mission_dir,
+                        model_type=self.jixing,
+                        progress_callback=report_task_upload_progress,
+                    ),
+                ),
+                ("启用地图", lambda: compass_request.set_map(self.ip, "enable", map_id)),
+                ("同步车辆地图", lambda: compass_request.sync_vehicle_map(self.ip, map_id)),
+                ("手动重定位", lambda: compass_request.manual_relocation(ip=self.ip, init_x=init_x, init_y=init_y, init_angle=init_angle)),
+                ("自动重定位", lambda: compass_request.auto_relocation(self.ip)),
+                ("切换自动模式", lambda: compass_request.set_mode(self.ip, "autoMode"))
+            ]
         init_steps = []
         for step_name, action in steps:
             if stop_event and stop_event.is_set():
                 raise RuntimeError("动态测试已停止")
             self.save_task_status(None, current_step=step_name, step_status="running", init_steps=init_steps, error="")
-            max_attempts = 2 if step_name == "手动重定位" else 1
-            step_error = None
-            for attempt in range(1, max_attempts + 1):
-                if attempt > 1:
-                    if stop_event and stop_event.is_set():
-                        step_error = RuntimeError("动态测试已停止")
-                        break
-                    self.save_task_status(
-                        None,
-                        current_step="手动重定位失败，正在重试（2/2）",
-                        step_status="running",
-                        init_steps=init_steps,
-                        error="",
-                    )
-                try:
-                    action()
-                    step_error = None
-                    break
-                except Exception as e:
-                    step_error = e
-
-            if step_error is None:
+            try:
+                action()
                 init_steps.append({"name": step_name, "status": "success"})
                 self.save_task_status(None, current_step=step_name, step_status="success", init_steps=init_steps, error="")
-            else:
+            except Exception as e:
                 init_steps.append({"name": step_name, "status": "failed"})
-                retry_text = "重试后仍失败" if max_attempts > 1 else "失败"
-                error_msg = f"{step_name}{retry_text}: {step_error}"
+                error_msg = f"{step_name}失败: {e}"
                 self.save_task_status(None, current_step=step_name, step_status="failed", init_steps=init_steps, error=error_msg, result="failed")
-                raise RuntimeError(error_msg) from step_error
+                raise RuntimeError(error_msg) from e
         self.save_task_status(None, current_step="初始化完成", step_status="success", init_steps=init_steps, error="")
 
     def _build_status_by_index(self, task_names, current_idx, current_running=True):
@@ -216,6 +223,8 @@ class InspectionAutomation:
 
         for i, task_name in enumerate(task_names):
             if stop_event and stop_event.is_set():
+                if self.jixing == "EX":
+                    robot_request.stop_all_tasks(self.ip)
                 interrupted_status = {name: ("success" if idx < i else "failed") for idx, name in enumerate(task_names)}
                 self.save_task_status(
                     interrupted_status,
@@ -283,9 +292,9 @@ class InspectionAutomation:
                     return failed_status
             
             try:
-                status_code, mission_resp = compass_request.start_mission(self.ip, task_id)
-                if status_code >= 400:
-                    raise RuntimeError(f"启动任务接口异常: {status_code}, {mission_resp}")
+                mission_resp = robot_request.create_mission(self.ip, task_name, self.jixing)
+                if isinstance(mission_resp, dict) and mission_resp.get("success") is False:
+                    raise RuntimeError(f"启动任务失败: {mission_resp.get('error', '未知错误')}")
             except Exception as e:
                 failed_status = self._build_status_by_index(task_names, i, current_running=False)
                 failed_status[task_name] = "failed"
@@ -297,6 +306,8 @@ class InspectionAutomation:
             # 等待任务完成：保持当前状态分布
             while self.is_task_running(task_name):
                 if stop_event and stop_event.is_set():
+                    if self.jixing == "EX":
+                        robot_request.stop_all_tasks(self.ip)
                     interrupted_status = {name: ("success" if idx < i else "failed") for idx, name in enumerate(task_names)}
                     self.save_task_status(
                         interrupted_status,
@@ -351,8 +362,6 @@ class InspectionAutomation:
             'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'current_step': current_step if current_step is not None else existing_dynamic.get('current_step', ''),
             'step_status': step_status if step_status is not None else existing_dynamic.get('step_status', ''),
-            'init_steps': init_steps if init_steps is not None else existing_dynamic.get('init_steps', []),
-            'error': error if error is not None else existing_dynamic.get('error', '')
         }
 
         existing_data['dynamic'] = dynamic_payload
@@ -361,6 +370,13 @@ class InspectionAutomation:
 
     def is_task_running(self, task_name):
         """查询任务是否结束"""
+        # EX 机型使用 Robot API 查询任务状态，其他机型使用 Compass V3 API
+        if self.jixing == "EX":
+            return self._is_task_running_ex(task_name)
+        return self._is_task_running_compass(task_name)
+
+    def _is_task_running_compass(self, task_name):
+        """Compass V3 API 查询任务状态（MS/MR/HSR 等非 EX 机型）"""
         url = (
             f"http://{self.ip}:8080/api/v3/missionWorks/listByStatus"
             "?statusList=CREATE,START,WAIT,RUNNING,FAULT,PAUSE,BEING_PAUSE,BEING_RESUME,WAITINPUT"
@@ -385,6 +401,10 @@ class InspectionAutomation:
             print(f"查询任务状态时出错: {e}")
             return False
 
+    def _is_task_running_ex(self, task_name):
+        """EX 机型使用 Robot API 查询任务状态"""
+        return robot_request.is_task_running(self.ip, task_name)
+
     def get_all_task_status(self):
         """查询所有任务的状态"""
         status = {}
@@ -397,8 +417,8 @@ class InspectionAutomation:
 
 # 示例用法
 if __name__ == "__main__":
-    ip = "192.168.16.25"
-    jixing = "MS"
+    ip = "192.168.16.232"
+    jixing = "EX"
 
     # 初始化类并执行初始化操作
     inspector = InspectionAutomation(ip, jixing)

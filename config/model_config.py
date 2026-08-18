@@ -91,6 +91,7 @@ VERSION_ITEMS = {
     'MS': ['pilot_version', 'compass_version', 'rcc_base_version', 'mirror_system'],
     'MR': ['pilot_version', 'compass_version', 'mirror_system', 'rws_version'],
     'TW': ['pilot_version', 'rcc_base_version', 'robot_version', 'rws_version', 'mirror_system', 'youiscript_version', 'mos_version'],
+    'EX': ['pilot_version', 'rcc_base_version', 'robot_version', 'rws_version', 'mirror_system', 'youiscript_version', 'mos_version'],
     'HSR': ['pilot_version', 'compass_version', 'mirror_system', 'mos_version_hsr', 'mirror_system_hsr', 'rcc_base_version'],
 }
 
@@ -128,6 +129,15 @@ VERSION_STANDARDS = {
         "youiscript_version": "release_v2.0.0.8-x86_64-running",
         "mos_version": "2.8.5_20260411",
     },
+    'EX': {
+        "pilot_version": "release_v4.0.8_xjyw.260725.1-x86_64-running",
+        "rcc_base_version": "2.01",
+        "robot_version": "robot-v1.3.1.1_2.2_202608011711",
+        "rws_version": "v2.0.2",
+        "mirror_system": "Pilot-4.0.3-desktop-2025-12-31.img",
+        "youiscript_version": "release_v2.0.0.8-x86_64-running",
+        "mos_version": "2.8.7_ARIS_20260804",
+    },
     'HSR': {
         "pilot_version": "v4.0.6_ex100.251028.1",
         "compass_version": "YOUICompassSetup-4.7.4-xjyw-V3.0-bl-20251229",
@@ -146,6 +156,13 @@ DYNAMIC_TASK_EXECUTION = {
         '曲线': 'f5fb1dd8-fb44-46d1-aa0f-6876b08cbf1a',
         '沟壑': '769a31f3-50a7-4b5f-a431-34f5513a0bc5',
         '云台': '7f883a3c-0c98-4e1a-b4ee-e21f805ec9d4',
+    },
+    'EX': {
+        '直线': '66fae2d4-462b-4b33-a392-b66e4f63cdbe',
+        '切区': '2087823360446771201',
+        '曲线': 'f5fb1dd8-fb44-46d1-aa0f-6876b08cbf1a',
+        '沟壑': '769a31f3-50a7-4b5f-a431-34f5513a0bc5',
+        '云台': '2089241270201430018',
     },
     'MR': {
         '直线': '5631958b-40e7-45c8-8f7b-b447c3d8e9b4',
@@ -316,6 +333,16 @@ MODEL_CONFIG = {
         'sensor': ['odom', 'imu_data', 'ks114_sensor', 'cpu_hz', 'temperature', 'humidity', 'o2', 'microphone', 'fan_board'],
         'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.2.100'],
         'integrated': ['light_photo', 'light_video', 'thermal_photo', 'thermal_video', 'thermal_Temperature', 'light_PTZ', 'light_point', 'thermal_point', 'Manual_focusing', 'Auto_focusing'],
+    },
+    'EX': {
+        'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'dynamic', 'manual'],
+        'button': ['emergency_stop'],
+        'light': ['red', 'green', 'blue'],
+        'anti_collision': ['front', 'back'],
+        'version': list(VERSION_ITEMS['EX']),
+        'sensor': ['odom', 'imu_data', 'encoder', 'scan_1', 'cpu_hz'],
+        'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2'],
+        'dynamic': list(DYNAMIC_TASK_EXECUTION['EX']),
     },
     'HSR': {
         'test_items': ['version', 'sensor', 'ping', 'button', 'anti_collision', 'speaker', 'light', 'dynamic', 'manual'],

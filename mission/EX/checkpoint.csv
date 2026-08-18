@@ -1,0 +1,8 @@
+id,level_code,point_name,agv_map_name,point_code,kks_code,image_template_path,pic_path,step_order,disable,create_time,update_time
+2087367781999276034,GJDRSJQL,起点,,qidian,,,,0,0,2026-08-12 10:37:15,2026-08-12 10:37:15
+2087368560239800322,GJDRSJQL,直线起点,,zhixianqidian,,,,0,0,2026-08-12 10:40:20,2026-08-12 10:40:20
+2087368675159535617,GJDRSJQL,直线终点,,zhixianzhongdian,,,,0,0,2026-08-12 10:40:48,2026-08-12 10:40:48
+2087368783162863618,GJDRSJQL,沟壑终点,,gouhezhongdian,,,,0,0,2026-08-12 10:41:14,2026-08-12 10:41:14
+2087368897570893826,GJDRSJQL,曲线终点,,quxianzhongdian,,,,0,0,2026-08-12 10:41:41,2026-08-12 10:41:41
+2089524414733430786,GJDRSJQL,区域终点,,quyuzhongdian,,,,0,0,2026-08-18 09:26:56,2026-08-18 09:26:56
+2089524835027857410,GJDRSJQL,云台点,,yuntaidian,,,,0,0,2026-08-18 09:28:36,2026-08-18 09:28:36

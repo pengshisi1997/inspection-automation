@@ -1,0 +1,8 @@
+id,point_code,pre_action,next_action,is_first_action,is_last_action,action_type,name,item_codes,create_time,update_time
+1786502242643,qidian,,,1,1,MOVE_SIDE_PATH,路径导航,,2026-08-12 10:37:31,2026-08-12 10:37:31
+1786502425100,zhixianqidian,,,1,1,MOVE_SIDE_PATH,路径导航,,2026-08-12 10:40:31,2026-08-12 10:40:31
+1786502451795,zhixianzhongdian,,,1,1,MOVE_SIDE_PATH,路径导航,,2026-08-12 10:40:55,2026-08-12 10:40:55
+1786502478210,gouhezhongdian,,,1,1,MOVE_SIDE_PATH,路径导航,,2026-08-12 10:41:23,2026-08-12 10:41:23
+1786502503976,quxianzhongdian,,,1,1,MOVE_SIDE_PATH,路径导航,,2026-08-12 10:41:48,2026-08-12 10:41:48
+1787017808416,yuntaidian,,,1,1,CAMERA_ACTION,云台,,2026-08-18 09:50:31,2026-08-18 09:50:31
+1787021608744,quyuzhongdian,,,1,1,MOVE_SIDE_PATH,路径导航,,2026-08-18 10:56:32,2026-08-18 10:56:32
