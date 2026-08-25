@@ -165,8 +165,9 @@ class RosTopicReader:
         try:
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            # 使用端口10022连接
-            client.connect(self.ip, port=10022, username=self.username, password=self.password, timeout=10)
+            # TW机型使用22端口，其他机型（EX）使用10022端口
+            port = 22 if self.model == 'TW' else 10022
+            client.connect(self.ip, port=port, username=self.username, password=self.password, timeout=10)
             
             # 执行 lsusb 命令
             stdin, stdout, stderr = client.exec_command('lsusb')

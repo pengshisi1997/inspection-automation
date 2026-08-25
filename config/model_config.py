@@ -121,13 +121,13 @@ VERSION_STANDARDS = {
         "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
     },
     'TW': {
-        "pilot_version": "release_v4.0.8_xjyw.260725.1-x86_64-running",
+        "pilot_version": "release_v4.0.8_xjyw.260730.1-x86_64-running",
         "rcc_base_version": "2.02",
-        "robot_version": "robot-v1.3.0.1_2.100_202606121820",
+        "robot_version": "robot-v1.3.1.1_2.2_202608011711",
         "rws_version": "v2.0.2",
         "mirror_system": "Pilot-4.0.3-desktop-2025-7-31.img",
         "youiscript_version": "release_v2.0.0.8-x86_64-running",
-        "mos_version": "2.8.5_20260411",
+        "mos_version": "2.8.7_ARIS_20260804",
     },
     'EX': {
         "pilot_version": "release_v4.0.8_xjyw.260725.1-x86_64-running",
@@ -325,13 +325,13 @@ MODEL_CONFIG = {
         'dynamic': DEFAULT_DYNAMIC_TASKS,
     },
     'TW': {
-        'test_items': ['version', 'sensor', 'ping', 'button', 'speaker', 'light', 'integrated', 'manual'],
+        'test_items': ['version', 'sensor', 'ping', 'button', 'speaker', 'light',  'manual'],
         'button': ['emergency_stop'],
         'light': ['red', 'blue', 'green', 'front_light', 'back_light', 'charge_relay'],
         'anti_collision': ['front', 'back'],
         'version': list(VERSION_ITEMS['TW']),
         'sensor': ['odom', 'imu_data', 'ks114_sensor', 'cpu_hz', 'temperature', 'humidity', 'o2', 'microphone', 'fan_board'],
-        'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', '192.168.2.100'],
+        'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', ],
         'integrated': ['light_photo', 'light_video', 'thermal_photo', 'thermal_video', 'thermal_Temperature', 'light_PTZ', 'light_point', 'thermal_point', 'Manual_focusing', 'Auto_focusing'],
     },
     'EX': {

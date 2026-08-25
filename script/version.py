@@ -635,10 +635,11 @@ class MirrorSystemReader:
             return f"🚨 IO Expander 版本获取失败: {exc}"
 
     def get_robot_version(self, ip):
+        port = 10022 if self.model == "EX" else 22
         return self._find_keyword_entry(
             ip,
-            "robot",
-            port=10022,
+            "robot-v",
+            port=port,
             prefer_non_zip=True,
             missing_message="⚠️ 未检测到 robot 版本文件，需人工处理",
         )
@@ -653,10 +654,11 @@ class MirrorSystemReader:
             )
         if self.model in ("TW", "EX"):
             try:
+                port = 10022 if self.model == "EX" else 22
                 output, error = self._run_command(
                     ip,
                     "echo youibot | sudo -S docker ps --format '{{.Image}}'",
-                    port=10022,
+                    port=port,
                 )
                 if error and "password" not in error.lower() and "密码" not in error:
                     return f"❌ 获取 rws_version 失败:\n{error}"
