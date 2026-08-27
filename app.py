@@ -163,6 +163,19 @@ def handle_exception(e):
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# 3D 模型（GLB）文件目录，按机型命名，例如 config/glb/MR.glb
+GLB_DIR = os.path.join(BASE_DIR, 'config', 'glb')
+
+
+def get_model_glb_url(model):
+    """若 config/glb/ 下存在对应机型的 glb 文件，返回其静态 URL，否则返回 None。"""
+    if not model:
+        return None
+    fname = f"{model}.glb"
+    if os.path.isfile(os.path.join(GLB_DIR, fname)):
+        return f"/config/glb/{fname}"
+    return None
+
 
 def resolve_model_file(base_dir, model, filename):
     """优先读取按机型目录文件，不存在则回退到旧路径。"""
@@ -523,7 +536,8 @@ def main():
             else:
                 test_times[test_type] = ''
     
-    return render_template('main.html', bound_ip=bound_ip, test_status=current_test_status, active_test=None, robot_info=robot_info, test_times=test_times, test_order=filtered_test_order, model_config=model_config, current_model=current_model, current_button_types=current_button_types, current_light_types=current_light_types)
+    glb_url = get_model_glb_url(current_model)
+    return render_template('main.html', bound_ip=bound_ip, test_status=current_test_status, active_test=None, robot_info=robot_info, test_times=test_times, test_order=filtered_test_order, model_config=model_config, current_model=current_model, current_button_types=current_button_types, current_light_types=current_light_types, glb_url=glb_url)
 
 @app.route('/main/<test_type>')
 def test_page(test_type):
@@ -559,9 +573,10 @@ def test_page(test_type):
             else:
                 test_times[t_type] = ''
     
+    glb_url = get_model_glb_url(current_model)
     if test_type not in valid_tests:
-        return render_template('main.html', bound_ip=bound_ip, test_status=current_test_status, active_test=None, robot_info=robot_info, test_times=test_times, test_order=filtered_test_order, model_config=model_config, current_model=current_model, current_button_types=current_button_types, current_light_types=current_light_types)
-    return render_template('main.html', bound_ip=bound_ip, test_status=current_test_status, active_test=test_type, robot_info=robot_info, test_times=test_times, test_order=filtered_test_order, model_config=model_config, current_model=current_model, current_button_types=current_button_types, current_light_types=current_light_types)
+        return render_template('main.html', bound_ip=bound_ip, test_status=current_test_status, active_test=None, robot_info=robot_info, test_times=test_times, test_order=filtered_test_order, model_config=model_config, current_model=current_model, current_button_types=current_button_types, current_light_types=current_light_types, glb_url=glb_url)
+    return render_template('main.html', bound_ip=bound_ip, test_status=current_test_status, active_test=test_type, robot_info=robot_info, test_times=test_times, test_order=filtered_test_order, model_config=model_config, current_model=current_model, current_button_types=current_button_types, current_light_types=current_light_types, glb_url=glb_url)
 
 import subprocess
 import platform

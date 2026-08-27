@@ -168,6 +168,21 @@
             color: #333;
             margin-bottom: 30px;
         }
+        /* 3D 模型展示区域 */
+        .glb-viewer {
+            width: 100%;
+            height: calc(100vh - 60px);
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative;
+        }
+        #glb-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
         /* 按钮样式 */
         .btn {
             padding: 8px 16px;
@@ -280,10 +295,16 @@
                 {% include active_test ~ '.html' %}
             {% else %}
                 <!-- 默认显示 -->
+                {% if glb_url %}
+                <div class="glb-viewer" id="glb-viewer">
+                    <canvas id="glb-canvas"></canvas>
+                </div>
+                {% else %}
                 <div class="test-ui">
                     <h2>请选择一个测试项目</h2>
                     <p>从左侧列表中选择一个测试项目开始测试</p>
                 </div>
+                {% endif %}
             {% endif %}
         </div>
         
@@ -339,6 +360,102 @@
         </div>
     </div>
     
+    {% if glb_url %}
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+        const container = document.getElementById('glb-viewer');
+        const canvas = document.getElementById('glb-canvas');
+        const glbUrl = {{ glb_url | tojson }};
+
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 2000);
+        camera.position.set(4, 3, 6);
+
+        // 灯光：白色背景下保证模型清晰可见
+        scene.add(new THREE.AmbientLight(0xffffff, 1.4));
+        scene.add(new THREE.HemisphereLight(0xffffff, 0xffffff, 1.0));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        const controls = new OrbitControls(camera, canvas);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.5;
+
+        function resize() {
+            if (!container) return;
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            renderer.setSize(w, h, false);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+        }
+
+        const loader = new GLTFLoader();
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/');
+        dracoLoader.setDecoderConfig({ type: 'js' });
+        loader.setDRACOLoader(dracoLoader);
+        loader.load(
+            glbUrl,
+            (gltf) => {
+                const model = gltf.scene;
+                scene.add(model);
+
+                const box = new THREE.Box3().setFromObject(model);
+                const size = box.getSize(new THREE.Vector3());
+                const center = box.getCenter(new THREE.Vector3());
+                if (size.length() > 0) {
+                    controls.target.copy(center);
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const fov = camera.fov * Math.PI / 180;
+                    let distance = maxDim / (2 * Math.tan(fov / 2));
+                    distance *= 1.8;
+                    const dir = new THREE.Vector3(1, 0.8, 1.2).normalize();
+                    camera.position.copy(center).add(dir.multiplyScalar(distance));
+                    camera.near = Math.max(distance / 1000, 0.001);
+                    camera.far = distance * 100;
+                    camera.updateProjectionMatrix();
+                }
+            },
+            undefined,
+            (err) => {
+                console.error('GLB 模型加载失败:', err);
+            }
+        );
+
+        window.addEventListener('resize', resize);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        resize();
+        animate();
+    </script>
+    {% endif %}
+
     <script>
         // 全局 Loading 控制函数
         function showLoading(text) {

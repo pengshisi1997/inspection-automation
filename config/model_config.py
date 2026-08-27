@@ -330,7 +330,7 @@ MODEL_CONFIG = {
         'light': ['red', 'blue', 'green', 'front_light', 'back_light', 'charge_relay'],
         'anti_collision': ['front', 'back'],
         'version': list(VERSION_ITEMS['TW']),
-        'sensor': ['odom', 'imu_data', 'ks114_sensor', 'cpu_hz', 'temperature', 'humidity', 'o2', 'microphone', 'fan_board'],
+        'sensor': ['odom', 'imu_data', 'ks114_sensor', 'cpu_hz', 'temperature', 'humidity', 'o2',  'fan_board'],
         'ping': ['192.168.0.8', '192.168.2.63', '192.168.2.250', '192.168.0.100', '192.168.2.2', ],
         'integrated': ['light_photo', 'light_video', 'thermal_photo', 'thermal_video', 'thermal_Temperature', 'light_PTZ', 'light_point', 'thermal_point', 'Manual_focusing', 'Auto_focusing'],
     },
